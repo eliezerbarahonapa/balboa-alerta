@@ -94,7 +94,6 @@ export default function App() {
     zone: "", contact: "", priority: "media",
   });
 
-    zone: "", contact: "", priority: "media", lat: null, lng: null,
   });
   const [gpsLoading, setGpsLoading] = useState(false);
  6cc9fe72d6ec06a1b2f960d41e63743cf148a648
@@ -103,7 +102,6 @@ export default function App() {
   const loadReports = useCallback(async () => {
     try {
 
-      const res = await fetch("http://localhost:5000/reports");
 
       const res = await fetch("https://balboa-alerta-production.up.railway.app/reports");
  6cc9fe72d6ec06a1b2f960d41e63743cf148a648
