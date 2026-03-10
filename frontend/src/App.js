@@ -90,13 +90,23 @@ export default function App() {
   const [toast, setToast]           = useState(null);
   const [form, setForm]             = useState({
     type: "Basura acumulada", description: "", location: "",
+
     zone: "", contact: "", priority: "media",
   });
+
+    zone: "", contact: "", priority: "media", lat: null, lng: null,
+  });
+  const [gpsLoading, setGpsLoading] = useState(false);
+ 6cc9fe72d6ec06a1b2f960d41e63743cf148a648
 
   // ── Cargar reportes ─────────────────────────────────────
   const loadReports = useCallback(async () => {
     try {
+
       const res = await fetch("http://localhost:5000/reports");
+
+      const res = await fetch("https://balboa-alerta-production.up.railway.app/reports");
+ 6cc9fe72d6ec06a1b2f960d41e63743cf148a648
       if (!res.ok) throw new Error();
       const data = await res.json();
       // Normalizar campos (unificar tipo/type, etc.)
@@ -128,12 +138,53 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
+
   // ── Enviar reporte ───────────────────────────────────────
   const submitReport = async (e) => {
     e.preventDefault();
     const newReport = { ...form, status: "nuevo", createdAt: new Date().toISOString() };
+
+  // ── GPS: Usar ubicación actual ───────────────────────────
+  const usarUbicacion = () => {
+    if (!navigator.geolocation) {
+      showToast("⚠️ Tu navegador no soporta geolocalización", "warn");
+      return;
+    }
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = parseFloat(pos.coords.latitude.toFixed(6));
+        const lng = parseFloat(pos.coords.longitude.toFixed(6));
+        setForm(f => ({ ...f, lat, lng, location: `GPS: ${lat}, ${lng}` }));
+        setGpsLoading(false);
+        showToast("📍 Ubicación GPS capturada correctamente");
+      },
+      (err) => {
+        setGpsLoading(false);
+        const msgs = {
+          1: "Permiso denegado. Activa la ubicación en tu navegador.",
+          2: "No se pudo determinar la ubicación.",
+          3: "Tiempo de espera agotado. Intenta de nuevo.",
+        };
+        showToast(`⚠️ ${msgs[err.code] || "Error de geolocalización"}`, "warn");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  // ── Enviar reporte ───────────────────────────────────────
+  const submitReport = async (e) => {
+    e.preventDefault();
+    const newReport = {
+      ...form,
+      lat:    form.lat  || null,
+      lng:    form.lng  || null,
+      status: "nuevo",
+      createdAt: new Date().toISOString(),
+    };
+6cc9fe72d6ec06a1b2f960d41e63743cf148a648
     try {
-      const res = await fetch("http://localhost:5000/reports", {
+      const res = await fetch("https://balboa-alerta-production.up.railway.app/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newReport),
@@ -156,7 +207,11 @@ export default function App() {
       setReports(updated);
       showToast("📡 Guardado localmente (servidor no disponible)", "warn");
     }
+
     setForm({ type: "Basura acumulada", description: "", location: "", zone: "", contact: "", priority: "media" });
+
+    setForm({ type: "Basura acumulada", description: "", location: "", zone: "", contact: "", priority: "media", lat: null, lng: null });
+ 6cc9fe72d6ec06a1b2f960d41e63743cf148a648
     setSection("home");
   };
 
@@ -165,7 +220,11 @@ export default function App() {
     const updated = reports.map(r => r.id === id ? { ...r, status: newStatus } : r);
     setReports(updated);
     try {
+
       await fetch(`http://localhost:5000/reports/${id}`, {
+
+      await fetch(`https://balboa-alerta-production.up.railway.app/reports/${id}`, {
+ 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -293,7 +352,13 @@ export default function App() {
                   <span className="rc-loc">📍 {r.location}</span>
                   {r.contact && <span className="rc-contact">👤 {r.contact}</span>}
                   <a className="rc-maplink"
+
                     href={`https://www.google.com/maps?q=${encodeURIComponent((r.location || r.zone || "Barrio Balboa, La Chorrera") + ", La Chorrera, Panamá")}`}
+
+                    href={r.lat && r.lng
+                      ? `https://www.google.com/maps?q=${r.lat},${r.lng}`
+                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((r.location || r.zone || "Barrio Balboa") + ", La Chorrera, Panamá")}`}
+
                     target="_blank" rel="noopener noreferrer">
                     Ver en mapa ↗
                   </a>
@@ -342,8 +407,16 @@ export default function App() {
           <div className="form-group">
             <label>Ubicación aproximada *</label>
             <input value={form.location}
+
               onChange={e => setForm({ ...form, location: e.target.value })}
               placeholder="Ej: Calle 3, frente al parque..." required />
+
+              onChange={e => setForm({ ...form, location: e.target.value, lat: null, lng: null })}
+              placeholder="Ej: Calle 3, frente al parque..." required />
+            <button type="button" className="btn-gps" onClick={usarUbicacion} disabled={gpsLoading}>
+              {gpsLoading ? "⏳ Obteniendo ubicación..." : form.lat ? `✅ GPS: ${form.lat}, ${form.lng}` : "📍 Usar mi ubicación actual"}
+            </button>
+
           </div>
           <div className="form-group">
             <label>Zona / Sector</label>
@@ -408,15 +481,30 @@ export default function App() {
                 <Circle center={coords} radius={80} pathOptions={{ color, fillColor: color, fillOpacity: 0.15, weight: 2 }} />
                 {reps.map(r => {
                   const ti = getTipoInfo(r.type);
+
                   const jitter = [(Math.random() - 0.5) * 0.002, (Math.random() - 0.5) * 0.002];
                   return (
                     <Marker key={r.id}
                       position={[coords[0] + jitter[0], coords[1] + jitter[1]]}
+
+                  // Prioridad: coordenadas GPS reales > coordenadas de zona aproximadas
+                  const hasGps = r.lat && r.lng;
+                  const markerCoords = hasGps
+                    ? [r.lat, r.lng]
+                    : [coords[0] + (Math.random() - 0.5) * 0.002, coords[1] + (Math.random() - 0.5) * 0.002];
+                  return (
+                    <Marker key={r.id}
+                      position={markerCoords}
+
                       icon={createColorMarker(ti.color)}>
                       <Popup>
                         <strong>{ti.icon} {r.type}</strong><br />
                         📍 {r.location || zona}<br />
                         {r.description && <><em>{r.description}</em><br /></>}
+
+
+                        {r.lat && <><small style={{color:"#27ae60"}}>📡 Coordenadas GPS reales</small><br /></>}
+
                         <span style={{ color: PRIORIDADES[r.priority]?.color }}>● {PRIORIDADES[r.priority]?.label || "Media"}</span>
                       </Popup>
                     </Marker>
