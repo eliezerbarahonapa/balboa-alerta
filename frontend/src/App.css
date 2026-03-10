@@ -1,0 +1,192 @@
+/* ------------------------------------------------------- */
+/* ESTILOS BASE                                            */
+/* ------------------------------------------------------- */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  background: #f9f4f4;
+  color: #4a2a2a;
+}
+
+.container {
+  max-width: 850px;
+  margin: auto;
+  padding: 30px 20px;
+}
+
+/* ------------------------------------------------------- */
+/* TITULARES PRINCIPALES                                   */
+/* ------------------------------------------------------- */
+.hero-title {
+  text-align: center;
+  font-size: 34px;
+  font-weight: 800;
+  color: #b20000;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.hero-subtitle {
+  text-align: center;
+  font-size: 16px;
+  margin-top: 12px;
+  margin-bottom: 30px;
+  color: #5a3a3a;
+}
+
+/* ------------------------------------------------------- */
+/* BOTONES                                                 */
+/* ------------------------------------------------------- */
+.btn-primary {
+  display: inline-block;
+  background: #b20000;
+  color: white;
+  font-weight: 700;
+  font-size: 17px;
+  padding: 12px 28px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #7d0000;
+}
+
+button {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font-weight: 600;
+}
+
+.buttons-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 25px;
+}
+
+/* ------------------------------------------------------- */
+/* FORMULARIO DE REPORTE                                   */
+/* ------------------------------------------------------- */
+.report-form label {
+  display: block;
+  margin-bottom: 18px;
+  font-weight: 600;
+}
+
+.report-form input,
+.report-form select,
+.report-form textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border-radius: 6px;
+  border: 1px solid #c7b4b4;
+  font-size: 15px;
+  background: #fffdfd;
+}
+
+.report-form textarea {
+  height: 100px;
+  resize: vertical;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+}
+
+/* ------------------------------------------------------- */
+/* TARJETAS DE REPORTES                                    */
+/* ------------------------------------------------------- */
+h2 {
+  color: #4a2a2a;
+  margin-bottom: 15px;
+}
+
+.report-card {
+  background: white;
+  border-left: 5px solid #b20000;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 18px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.report-card h3 {
+  margin: 0;
+  margin-bottom: 5px;
+  color: #8a0000;
+}
+
+.report-info {
+  margin: 6px 0;
+  line-height: 1.4;
+}
+
+.report-footer-row {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.report-footer-date {
+  font-size: 13px;
+  color: #6a5c5c;
+}
+
+.map-link {
+  background: #cfa304;
+  color: white;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.map-link:hover {
+  background: #a27c02;
+}
+
+/* ------------------------------------------------------- */
+/* VISTA PREVIA DEL MAPA                                   */
+/* ------------------------------------------------------- */
+.map-preview-box {
+  background: #fff6e1;
+  border: 2px solid #d4b15c;
+  border-radius: 10px;
+  padding: 15px;
+  margin-top: 25px;
+}
+
+.map-preview-box h3 {
+  margin: 0 0 10px 0;
+  color: #8a6200;
+  font-weight: 800;
+}
+
+.map-preview-text {
+  font-size: 14px;
+  color: #8a6200;
+  margin-bottom: 12px;
+}
+
+.map-frame-wrapper {
+  width: 100%;
+  height: 260px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #d4b15c;
+}
+
+.map-frame-wrapper iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}

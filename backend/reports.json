@@ -1,0 +1,48 @@
+[
+  {
+    "id": "1764825555388",
+    "tipo": "",
+    "descripcion": "",
+    "ubicacion": "",
+    "zona": "",
+    "prioridad": "",
+    "contacto": "",
+    "fecha": "2025-12-04T05:19:15.388Z"
+  },
+  {
+    "id": 1764822103936,
+    "type": "Alumbrado defectuoso",
+    "description": "Poca visibilidad en Naos",
+    "location": "Cerca de la Esc. Federico",
+    "contact": "Sr Angelina 6963697",
+    "status": "nuevo",
+    "priority": "alta",
+    "zone": "Barrio Balboa, Naos, Esc. Federico",
+    "source": "propio",
+    "createdAt": "2025-12-04T04:21:43.936Z"
+  },
+  {
+    "id": 1764818261903,
+    "type": "Alumbrado defectuoso",
+    "description": "adadsa",
+    "location": "asdads",
+    "contact": "Juan",
+    "createdAt": "2025-12-04T03:17:41.903Z"
+  },
+  {
+    "id": 1764818251178,
+    "type": "Riesgo para peatones",
+    "description": "sdfsfsdf",
+    "location": "sdfsdfs",
+    "contact": "Carla",
+    "createdAt": "2025-12-04T03:17:31.178Z"
+  },
+  {
+    "id": 1764817940980,
+    "type": "Daño en vía pública",
+    "description": "dasdads",
+    "location": "gggg",
+    "contact": "dd4554",
+    "createdAt": "2025-12-04T03:12:20.980Z"
+  }
+]
