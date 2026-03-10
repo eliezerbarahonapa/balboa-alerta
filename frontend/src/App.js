@@ -94,9 +94,9 @@ export default function App() {
     zone: "", contact: "", priority: "media",
   });
 
-  });
+  
   const [gpsLoading, setGpsLoading] = useState(false);
- 6cc9fe72d6ec06a1b2f960d41e63743cf148a648
+ 
 
   // ── Cargar reportes ─────────────────────────────────────
   const loadReports = useCallback(async () => {
@@ -104,7 +104,7 @@ export default function App() {
 
 
       const res = await fetch("https://balboa-alerta-production.up.railway.app/reports");
- 6cc9fe72d6ec06a1b2f960d41e63743cf148a648
+ 
       if (!res.ok) throw new Error();
       const data = await res.json();
       // Normalizar campos (unificar tipo/type, etc.)
