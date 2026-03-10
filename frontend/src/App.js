@@ -4,7 +4,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
 
-// Fix leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -13,15 +12,15 @@ L.Icon.Default.mergeOptions({
 });
 
 const TIPOS = [
-  { value: "Basura acumulada",       icon: "🗑️", color: "#e67e22" },
-  { value: "Alumbrado defectuoso",   icon: "💡", color: "#f1c40f" },
-  { value: "Daño en vía pública",    icon: "🚧", color: "#e74c3c" },
-  { value: "Riesgo para peatones",   icon: "⚠️", color: "#c0392b" },
-  { value: "Problema de agua",       icon: "💧", color: "#2980b9" },
-  { value: "Alcantarillado",         icon: "🔩", color: "#7f8c8d" },
-  { value: "Seguridad ciudadana",    icon: "🛡️", color: "#8e44ad" },
-  { value: "Áreas verdes",           icon: "🌿", color: "#27ae60" },
-  { value: "Otro",                   icon: "📋", color: "#95a5a6" },
+  { value: "Basura acumulada",      icon: "🗑️", color: "#e67e22" },
+  { value: "Alumbrado defectuoso",  icon: "💡", color: "#f1c40f" },
+  { value: "Daño en vía pública",   icon: "🚧", color: "#e74c3c" },
+  { value: "Riesgo para peatones",  icon: "⚠️", color: "#c0392b" },
+  { value: "Problema de agua",      icon: "💧", color: "#2980b9" },
+  { value: "Alcantarillado",        icon: "🔧", color: "#7f8c8d" },
+  { value: "Seguridad ciudadana",   icon: "🔵", color: "#8e44ad" },
+  { value: "Áreas verdes",          icon: "🌿", color: "#27ae60" },
+  { value: "Otro",                  icon: "📋", color: "#95a5a6" },
 ];
 
 const ZONAS = [
@@ -38,91 +37,69 @@ const PRIORIDADES = {
 };
 
 const ESTADOS = {
-  nuevo:      { label: "Nuevo",       color: "#2980b9" },
-  revision:   { label: "En revisión", color: "#f39c12" },
-  proceso:    { label: "En proceso",  color: "#8e44ad" },
-  resuelto:   { label: "Resuelto",    color: "#27ae60" },
+  nuevo:         { label: "Nuevo",       color: "#e74c3c" },
+  "en revision": { label: "En revisión", color: "#f39c12" },
+  "en proceso":  { label: "En proceso",  color: "#3498db" },
+  resuelto:      { label: "Resuelto",    color: "#27ae60" },
 };
 
-// Coordenadas de Barrio Balboa, La Chorrera
-const CENTER = [8.8815, -79.7811];
+const API = "https://balboa-alerta-production.up.railway.app";
 
-const ADMIN_PASS = "balboa2029";
-
-// Coordenadas aproximadas por zona
-const ZONA_COORDS = {
-  "La Tuliheuca":        [8.8820, -79.7790],
-  "Naos":                [8.8830, -79.7840],
-  "Santa Elena":         [8.8800, -79.7760],
-  "San Nicolás":         [8.8810, -79.7830],
-  "Marañonal":           [8.8795, -79.7850],
-  "Barrio Balboa Centro":[8.8815, -79.7811],
-  "Av. Las Américas":    [8.8825, -79.7800],
-  "Calle P. P. Sánchez": [8.8808, -79.7820],
-  "El Hatillo":          [8.8850, -79.7770],
-  "Otra zona":           [8.8815, -79.7811],
-};
-
-function getTipoInfo(tipo) {
-  return TIPOS.find(t => t.value === tipo) || TIPOS[TIPOS.length - 1];
-}
-
-function createColorMarker(color) {
+function createColorIcon(color) {
   return L.divIcon({
     className: "",
-    html: `<div style="width:14px;height:14px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>`,
+    html: `<div style="width:14px;height:14px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
 }
 
-// ══════════════════════════════════════════════════════════════
 export default function App() {
-  const [section, setSection]       = useState("home");
-  const [reports, setReports]       = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [adminAuth, setAdminAuth]   = useState(false);
+  const [section, setSection] = useState("home");
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [adminAuth, setAdminAuth] = useState(false);
   const [adminInput, setAdminInput] = useState("");
   const [adminError, setAdminError] = useState("");
   const [filterZona, setFilterZona] = useState("todas");
   const [filterTipo, setFilterTipo] = useState("todos");
   const [filterEstado, setFilterEstado] = useState("todos");
-  const [toast, setToast]           = useState(null);
-  const [form, setForm]             = useState({
-    type: "Basura acumulada", description: "", location: "",
-
-    zone: "", contact: "", priority: "media",
+  const [toast, setToast] = useState(null);
+  const [form, setForm] = useState({
+    type: "Basura acumulada",
+    description: "",
+    location: "",
+    zone: "",
+    contact: "",
+    priority: "media",
+    lat: null,
+    lng: null,
   });
-
-  
   const [gpsLoading, setGpsLoading] = useState(false);
- 
 
-  // ── Cargar reportes ─────────────────────────────────────
   const loadReports = useCallback(async () => {
     try {
-
-
-      const res = await fetch("https://balboa-alerta-production.up.railway.app/reports");
- 
+      setLoading(true);
+      const res = await fetch(`${API}/reports`);
       if (!res.ok) throw new Error();
       const data = await res.json();
-      // Normalizar campos (unificar tipo/type, etc.)
-      const normalized = data.map(r => ({
+      const normalized = data.map((r) => ({
         id:          r.id || Date.now(),
-        type:        r.type  || r.tipo        || "Otro",
+        type:        r.type || r.tipo || "Otro",
         description: r.description || r.descripcion || "",
-        location:    r.location    || r.ubicacion   || "",
-        zone:        r.zone        || r.zona        || "Barrio Balboa Centro",
-        contact:     r.contact     || r.contacto    || "",
-        priority:    r.priority    || r.prioridad   || "media",
-        status:      r.status      || "nuevo",
-        createdAt:   r.createdAt   || r.fecha       || new Date().toISOString(),
+        location:    r.location || r.ubicacion || "",
+        zone:        r.zone || r.zona || "",
+        contact:     r.contact || r.contacto || "",
+        priority:    r.priority || r.prioridad || "media",
+        status:      r.status || "nuevo",
+        source:      r.source || "vecino",
+        createdAt:   r.createdAt || new Date().toISOString(),
+        lat:         r.lat || null,
+        lng:         r.lng || null,
       }));
       setReports(normalized);
-    } catch {
-      const local = localStorage.getItem("balboa_reports_v2");
-      if (local) setReports(JSON.parse(local));
+    } catch (err) {
+      showToast("No se pudo conectar al servidor", "error");
     } finally {
       setLoading(false);
     }
@@ -130,559 +107,338 @@ export default function App() {
 
   useEffect(() => { loadReports(); }, [loadReports]);
 
-  // ── Toast ────────────────────────────────────────────────
-  const showToast = (msg, type = "success") => {
+  function showToast(msg, type) {
+    if (type === undefined) { type = "success"; }
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
-  };
+  }
 
-
-  // ── Enviar reporte ───────────────────────────────────────
-  const submitReport = async (e) => {
-    e.preventDefault();
-    const newReport = { ...form, status: "nuevo", createdAt: new Date().toISOString() };
-
-  // ── GPS: Usar ubicación actual ───────────────────────────
-  const usarUbicacion = () => {
-    if (!navigator.geolocation) {
-      showToast("⚠️ Tu navegador no soporta geolocalización", "warn");
-      return;
-    }
+  function usarUbicacion() {
+    if (!navigator.geolocation) { showToast("GPS no disponible", "error"); return; }
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = parseFloat(pos.coords.latitude.toFixed(6));
-        const lng = parseFloat(pos.coords.longitude.toFixed(6));
-        setForm(f => ({ ...f, lat, lng, location: `GPS: ${lat}, ${lng}` }));
+      function(pos) {
+        setForm(function(f) { return Object.assign({}, f, { lat: pos.coords.latitude, lng: pos.coords.longitude }); });
         setGpsLoading(false);
-        showToast("📍 Ubicación GPS capturada correctamente");
+        showToast("Ubicación capturada");
       },
-      (err) => {
-        setGpsLoading(false);
-        const msgs = {
-          1: "Permiso denegado. Activa la ubicación en tu navegador.",
-          2: "No se pudo determinar la ubicación.",
-          3: "Tiempo de espera agotado. Intenta de nuevo.",
-        };
-        showToast(`⚠️ ${msgs[err.code] || "Error de geolocalización"}`, "warn");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      function() { setGpsLoading(false); showToast("No se pudo obtener ubicación", "error"); }
     );
-  };
+  }
 
-  // ── Enviar reporte ───────────────────────────────────────
-  const submitReport = async (e) => {
+  async function submitReport(e) {
     e.preventDefault();
-    const newReport = {
-      ...form,
-      lat:    form.lat  || null,
-      lng:    form.lng  || null,
-      status: "nuevo",
-      createdAt: new Date().toISOString(),
-    };
-6cc9fe72d6ec06a1b2f960d41e63743cf148a648
+    if (!form.description.trim()) { showToast("Describe la incidencia", "error"); return; }
+    if (!form.zone) { showToast("Selecciona una zona", "error"); return; }
     try {
-      const res = await fetch("https://balboa-alerta-production.up.railway.app/reports", {
+      var res = await fetch(API + "/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newReport),
+        body: JSON.stringify(Object.assign({}, form, { status: "nuevo", createdAt: new Date().toISOString() })),
       });
-      const saved = await res.json();
-      if (saved.reports) setReports(saved.reports.map(r => ({
-        id: r.id, type: r.type || r.tipo || "Otro",
-        description: r.description || r.descripcion || "",
-        location: r.location || r.ubicacion || "",
-        zone: r.zone || r.zona || "Barrio Balboa Centro",
-        contact: r.contact || r.contacto || "",
-        priority: r.priority || r.prioridad || "media",
-        status: r.status || "nuevo",
-        createdAt: r.createdAt || r.fecha || new Date().toISOString(),
-      })));
-      showToast("✅ Reporte enviado. ¡Gracias por participar!");
-    } catch {
-      const updated = [newReport, ...reports];
-      localStorage.setItem("balboa_reports_v2", JSON.stringify(updated));
-      setReports(updated);
-      showToast("📡 Guardado localmente (servidor no disponible)", "warn");
+      if (!res.ok) throw new Error();
+      await loadReports();
+      setForm({ type: "Basura acumulada", description: "", location: "", zone: "", contact: "", priority: "media", lat: null, lng: null });
+      setSection("home");
+      showToast("Reporte enviado exitosamente");
+    } catch (err) {
+      showToast("Error al enviar el reporte", "error");
     }
+  }
 
-    setForm({ type: "Basura acumulada", description: "", location: "", zone: "", contact: "", priority: "media" });
-
-    setForm({ type: "Basura acumulada", description: "", location: "", zone: "", contact: "", priority: "media", lat: null, lng: null });
- 6cc9fe72d6ec06a1b2f960d41e63743cf148a648
-    setSection("home");
-  };
-
-  // ── Admin: cambiar estado ────────────────────────────────
-  const updateStatus = async (id, newStatus) => {
-    const updated = reports.map(r => r.id === id ? { ...r, status: newStatus } : r);
-    setReports(updated);
+  async function updateStatus(id, newStatus) {
     try {
-
-      await fetch(`http://localhost:5000/reports/${id}`, {
-
-      await fetch(`https://balboa-alerta-production.up.railway.app/reports/${id}`, {
- 
+      await fetch(API + "/reports/" + id, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-    } catch {
-      localStorage.setItem("balboa_reports_v2", JSON.stringify(updated));
+      await loadReports();
+      showToast("Estado actualizado");
+    } catch (err) {
+      showToast("Error actualizando estado", "error");
     }
-    showToast("Estado actualizado");
-  };
+  }
 
-  // ── Filtros ──────────────────────────────────────────────
-  const filtered = reports.filter(r => {
-    if (filterZona !== "todas" && r.zone !== filterZona) return false;
-    if (filterTipo !== "todos" && r.type !== filterTipo) return false;
-    if (filterEstado !== "todos" && r.status !== filterEstado) return false;
+  async function deleteReport(id) {
+    if (!window.confirm("Eliminar este reporte?")) { return; }
+    try {
+      await fetch(API + "/reports/" + id, { method: "DELETE" });
+      await loadReports();
+      showToast("Reporte eliminado");
+    } catch (err) {
+      showToast("Error eliminando reporte", "error");
+    }
+  }
+
+  var filtered = reports.filter(function(r) {
+    if (filterZona !== "todas" && r.zone !== filterZona) { return false; }
+    if (filterTipo !== "todos" && r.type !== filterTipo) { return false; }
+    if (filterEstado !== "todos" && r.status !== filterEstado) { return false; }
     return true;
   });
 
-  // ── Stats ────────────────────────────────────────────────
-  const stats = {
+  var stats = {
     total:    reports.length,
-    nuevos:   reports.filter(r => r.status === "nuevo").length,
-    proceso:  reports.filter(r => r.status === "proceso" || r.status === "revision").length,
-    resueltos:reports.filter(r => r.status === "resuelto").length,
+    nuevo:    reports.filter(function(r) { return r.status === "nuevo"; }).length,
+    proceso:  reports.filter(function(r) { return r.status === "en proceso"; }).length,
+    resuelto: reports.filter(function(r) { return r.status === "resuelto"; }).length,
   };
 
-  // ── Mapa: agrupar por zona ───────────────────────────────
-  const byZona = ZONAS.reduce((acc, z) => {
-    acc[z] = reports.filter(r => r.zone === z);
-    return acc;
-  }, {});
+  function getTipoData(type) {
+    return TIPOS.find(function(t) { return t.value === type; }) || TIPOS[TIPOS.length - 1];
+  }
 
-  // ══════════════════════════════════════════════════════════
-  // RENDERS
-  // ══════════════════════════════════════════════════════════
+  function formatDate(iso) {
+    return new Date(iso).toLocaleString("es-PA", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
 
-  const renderHome = () => (
-    <div className="page-home">
-      {/* HERO */}
-      <div className="hero">
-        <div className="hero-badge">Barrio Balboa · La Chorrera</div>
-        <h1 className="hero-title">BALBOA<br/>ALERTA</h1>
-        <p className="hero-sub">Vecinos organizados. Comunidad activa.<br/>Un barrio más limpio, más seguro, más nuestro.</p>
-        <button className="btn-report" onClick={() => setSection("form")}>
-          <span className="btn-icon">📢</span> Reportar incidencia
-        </button>
-      </div>
+  var mapReports = filtered.filter(function(r) { return r.lat && r.lng; });
 
-      {/* STATS */}
-      <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-num">{stats.total}</div>
-          <div className="stat-label">Total reportes</div>
-        </div>
-        <div className="stat-card stat-warn">
-          <div className="stat-num">{stats.nuevos}</div>
-          <div className="stat-label">Sin atender</div>
-        </div>
-        <div className="stat-card stat-blue">
-          <div className="stat-num">{stats.proceso}</div>
-          <div className="stat-label">En proceso</div>
-        </div>
-        <div className="stat-card stat-green">
-          <div className="stat-num">{stats.resueltos}</div>
-          <div className="stat-label">Resueltos</div>
-        </div>
-      </div>
-
-      {/* FILTROS */}
-      <div className="filters-bar">
-        <select value={filterZona} onChange={e => setFilterZona(e.target.value)}>
-          <option value="todas">📍 Todas las zonas</option>
-          {ZONAS.map(z => <option key={z} value={z}>{z}</option>)}
-        </select>
-        <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)}>
-          <option value="todos">📋 Todos los tipos</option>
-          {TIPOS.map(t => <option key={t.value} value={t.value}>{t.icon} {t.value}</option>)}
-        </select>
-        <select value={filterEstado} onChange={e => setFilterEstado(e.target.value)}>
-          <option value="todos">🔵 Todos los estados</option>
-          {Object.entries(ESTADOS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
-      </div>
-
-      {/* REPORTES */}
-      <div className="reports-header">
-        <h2 className="section-title">Reportes recientes</h2>
-        <span className="reports-count">{filtered.length} reporte(s)</span>
-      </div>
-
-      {loading ? (
-        <div className="loading-state">Cargando reportes...</div>
-      ) : filtered.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">🏘️</div>
-          <p>No hay reportes con estos filtros.<br/>¡Sé el primero en reportar!</p>
-        </div>
-      ) : (
-        <div className="reports-list">
-          {filtered.map(r => {
-            const tipo = getTipoInfo(r.type);
-            const prio = PRIORIDADES[r.priority] || PRIORIDADES.media;
-            const est  = ESTADOS[r.status] || ESTADOS.nuevo;
-            return (
-              <article className="report-card" key={r.id} style={{ borderLeftColor: tipo.color }}>
-                <div className="rc-header">
-                  <span className="rc-tipo" style={{ color: tipo.color }}>
-                    {tipo.icon} {r.type}
-                  </span>
-                  <span className="rc-date">
-                    {new Date(r.createdAt).toLocaleDateString("es-PA", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit" })}
-                  </span>
-                </div>
-                <div className="rc-badges">
-                  <span className="badge" style={{ background: prio.bg, color: prio.color, border: `1px solid ${prio.color}` }}>
-                    ● {prio.label}
-                  </span>
-                  <span className="badge" style={{ background: "#f0f8ff", color: est.color, border: `1px solid ${est.color}` }}>
-                    {est.label}
-                  </span>
-                  {r.zone && <span className="badge badge-zone">📍 {r.zone}</span>}
-                </div>
-                {r.description && <p className="rc-desc">{r.description}</p>}
-                <div className="rc-footer">
-                  <span className="rc-loc">📍 {r.location}</span>
-                  {r.contact && <span className="rc-contact">👤 {r.contact}</span>}
-                  <a className="rc-maplink"
-
-                    href={`https://www.google.com/maps?q=${encodeURIComponent((r.location || r.zone || "Barrio Balboa, La Chorrera") + ", La Chorrera, Panamá")}`}
-
-                    href={r.lat && r.lng
-                      ? `https://www.google.com/maps?q=${r.lat},${r.lng}`
-                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((r.location || r.zone || "Barrio Balboa") + ", La Chorrera, Panamá")}`}
-
-                    target="_blank" rel="noopener noreferrer">
-                    Ver en mapa ↗
-                  </a>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  // ── FORMULARIO ────────────────────────────────────────────
-  const renderForm = () => (
-    <div className="page-form">
-      <div className="form-header">
-        <button className="btn-back" onClick={() => setSection("home")}>← Volver</button>
-        <h2>Nuevo reporte ciudadano</h2>
-        <p>Tu reporte ayuda a mantener Barrio Balboa en mejores condiciones.</p>
-      </div>
-
-      <form onSubmit={submitReport} className="report-form">
-        <div className="form-group">
-          <label>Tipo de incidencia *</label>
-          <div className="tipo-grid">
-            {TIPOS.map(t => (
-              <button type="button" key={t.value}
-                className={`tipo-btn ${form.type === t.value ? "tipo-active" : ""}`}
-                style={form.type === t.value ? { borderColor: t.color, background: t.color + "15" } : {}}
-                onClick={() => setForm({ ...form, type: t.value })}>
-                <span>{t.icon}</span>
-                <span>{t.value}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label>Descripción del problema *</label>
-          <textarea value={form.description}
-            onChange={e => setForm({ ...form, description: e.target.value })}
-            placeholder="Describe brevemente qué está pasando..." required />
-        </div>
-
-        <div className="form-row-2">
-          <div className="form-group">
-            <label>Ubicación aproximada *</label>
-            <input value={form.location}
-
-              onChange={e => setForm({ ...form, location: e.target.value })}
-              placeholder="Ej: Calle 3, frente al parque..." required />
-
-              onChange={e => setForm({ ...form, location: e.target.value, lat: null, lng: null })}
-              placeholder="Ej: Calle 3, frente al parque..." required />
-            <button type="button" className="btn-gps" onClick={usarUbicacion} disabled={gpsLoading}>
-              {gpsLoading ? "⏳ Obteniendo ubicación..." : form.lat ? `✅ GPS: ${form.lat}, ${form.lng}` : "📍 Usar mi ubicación actual"}
-            </button>
-
-          </div>
-          <div className="form-group">
-            <label>Zona / Sector</label>
-            <select value={form.zone} onChange={e => setForm({ ...form, zone: e.target.value })}>
-              <option value="">Seleccionar zona...</option>
-              {ZONAS.map(z => <option key={z} value={z}>{z}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="form-row-2">
-          <div className="form-group">
-            <label>Prioridad</label>
-            <div className="prio-row">
-              {Object.entries(PRIORIDADES).map(([k, v]) => (
-                <button type="button" key={k}
-                  className={`prio-btn ${form.priority === k ? "prio-active" : ""}`}
-                  style={form.priority === k ? { background: v.color, color: "white", borderColor: v.color } : { color: v.color, borderColor: v.color }}
-                  onClick={() => setForm({ ...form, priority: k })}>
-                  {v.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Contacto (opcional)</label>
-            <input value={form.contact}
-              onChange={e => setForm({ ...form, contact: e.target.value })}
-              placeholder="Nombre y/o teléfono" />
-          </div>
-        </div>
-
-        <div className="form-actions">
-          <button type="button" className="btn-cancel" onClick={() => setSection("home")}>Cancelar</button>
-          <button type="submit" className="btn-submit">Enviar reporte 📢</button>
-        </div>
-      </form>
-    </div>
-  );
-
-  // ── MAPA ──────────────────────────────────────────────────
-  const renderMapa = () => (
-    <div className="page-mapa">
-      <div className="page-header">
-        <h2>Mapa de incidencias</h2>
-        <p>Distribución de reportes por sector en Barrio Balboa</p>
-      </div>
-
-      <div className="map-wrapper">
-        <MapContainer center={CENTER} zoom={15} style={{ height: "450px", borderRadius: "16px" }}>
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='© OpenStreetMap contributors'
-          />
-          {Object.entries(byZona).map(([zona, reps]) => {
-            if (reps.length === 0 || !ZONA_COORDS[zona]) return null;
-            const coords = ZONA_COORDS[zona];
-            const criticos = reps.filter(r => r.priority === "critica" || r.priority === "alta").length;
-            const color = criticos > 0 ? "#e74c3c" : "#2980b9";
-            return (
-              <React.Fragment key={zona}>
-                <Circle center={coords} radius={80} pathOptions={{ color, fillColor: color, fillOpacity: 0.15, weight: 2 }} />
-                {reps.map(r => {
-                  const ti = getTipoInfo(r.type);
-
-                  const jitter = [(Math.random() - 0.5) * 0.002, (Math.random() - 0.5) * 0.002];
-                  return (
-                    <Marker key={r.id}
-                      position={[coords[0] + jitter[0], coords[1] + jitter[1]]}
-
-                  // Prioridad: coordenadas GPS reales > coordenadas de zona aproximadas
-                  const hasGps = r.lat && r.lng;
-                  const markerCoords = hasGps
-                    ? [r.lat, r.lng]
-                    : [coords[0] + (Math.random() - 0.5) * 0.002, coords[1] + (Math.random() - 0.5) * 0.002];
-                  return (
-                    <Marker key={r.id}
-                      position={markerCoords}
-
-                      icon={createColorMarker(ti.color)}>
-                      <Popup>
-                        <strong>{ti.icon} {r.type}</strong><br />
-                        📍 {r.location || zona}<br />
-                        {r.description && <><em>{r.description}</em><br /></>}
-
-
-                        {r.lat && <><small style={{color:"#27ae60"}}>📡 Coordenadas GPS reales</small><br /></>}
-
-                        <span style={{ color: PRIORIDADES[r.priority]?.color }}>● {PRIORIDADES[r.priority]?.label || "Media"}</span>
-                      </Popup>
-                    </Marker>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
-        </MapContainer>
-      </div>
-
-      {/* Leyenda por zona */}
-      <div className="zona-legend">
-        {ZONAS.map(z => {
-          const count = byZona[z]?.length || 0;
-          if (count === 0) return null;
-          return (
-            <div key={z} className="zona-chip">
-              <span className="zona-name">📍 {z}</span>
-              <span className="zona-count">{count}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Leyenda de tipos */}
-      <div className="tipo-legend">
-        <h3>Tipos de incidencia</h3>
-        <div className="tipo-legend-grid">
-          {TIPOS.map(t => {
-            const count = reports.filter(r => r.type === t.value).length;
-            if (count === 0) return null;
-            return (
-              <div key={t.value} className="tipo-legend-item">
-                <span className="tl-dot" style={{ background: t.color }}></span>
-                <span className="tl-icon">{t.icon}</span>
-                <span className="tl-name">{t.value}</span>
-                <span className="tl-count">{count}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── ADMIN LOGIN ───────────────────────────────────────────
-  const renderAdminLogin = () => (
-    <div className="page-admin-login">
-      <div className="admin-login-card">
-        <div className="admin-logo">🛡️</div>
-        <h2>Panel de Administración</h2>
-        <p>Acceso restringido a coordinadores de Balboa Alerta</p>
-        <div className="admin-form">
-          <input type="password" placeholder="Contraseña de acceso"
-            value={adminInput} onChange={e => setAdminInput(e.target.value)}
-            onKeyDown={e => { if(e.key === "Enter") {
-              if (adminInput === ADMIN_PASS) { setAdminAuth(true); setAdminError(""); }
-              else setAdminError("Contraseña incorrecta");
-            }}} />
-          {adminError && <p className="admin-error">{adminError}</p>}
-          <button className="btn-submit" onClick={() => {
-            if (adminInput === ADMIN_PASS) { setAdminAuth(true); setAdminError(""); }
-            else setAdminError("Contraseña incorrecta");
-          }}>Ingresar</button>
-        </div>
-        <p className="admin-hint">Contraseña de prueba: <code>balboa2029</code></p>
-      </div>
-    </div>
-  );
-
-  // ── ADMIN PANEL ───────────────────────────────────────────
-  const renderAdmin = () => (
-    <div className="page-admin">
-      <div className="admin-header">
-        <div>
-          <h2>Panel de Administración</h2>
-          <p>{reports.length} reportes totales · {stats.nuevos} sin atender · {stats.resueltos} resueltos</p>
-        </div>
-        <button className="btn-logout" onClick={() => { setAdminAuth(false); setAdminInput(""); }}>
-          Cerrar sesión
-        </button>
-      </div>
-
-      {/* Stats admin */}
-      <div className="admin-stats">
-        {Object.entries(ESTADOS).map(([k, v]) => (
-          <div key={k} className="admin-stat" style={{ borderTop: `4px solid ${v.color}` }}>
-            <div className="as-num" style={{ color: v.color }}>
-              {reports.filter(r => r.status === k).length}
-            </div>
-            <div className="as-label">{v.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tabla de reportes */}
-      <div className="admin-table-wrap">
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Tipo</th>
-              <th>Descripción</th>
-              <th>Zona</th>
-              <th>Prioridad</th>
-              <th>Fecha</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map(r => {
-              const tipo = getTipoInfo(r.type);
-              const prio = PRIORIDADES[r.priority] || PRIORIDADES.media;
-              return (
-                <tr key={r.id}>
-                  <td><span style={{ color: tipo.color }}>{tipo.icon} {r.type}</span></td>
-                  <td className="td-desc">{r.description || <em style={{color:"#aaa"}}>Sin descripción</em>}</td>
-                  <td>📍 {r.zone || "—"}</td>
-                  <td><span className="admin-badge" style={{ color: prio.color, borderColor: prio.color }}>
-                    {prio.label}
-                  </span></td>
-                  <td className="td-date">{new Date(r.createdAt).toLocaleDateString("es-PA", { day:"2-digit", month:"short", year:"2-digit" })}</td>
-                  <td>
-                    <select className="status-select"
-                      value={r.status || "nuevo"}
-                      onChange={e => updateStatus(r.id, e.target.value)}
-                      style={{ color: ESTADOS[r.status]?.color || ESTADOS.nuevo.color }}>
-                      {Object.entries(ESTADOS).map(([k, v]) => (
-                        <option key={k} value={k}>{v.label}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  // ══════════════════════════════════════════════════════════
-  // LAYOUT PRINCIPAL
-  // ══════════════════════════════════════════════════════════
   return (
     <div className="app">
-      {/* NAVBAR */}
-      <nav className="navbar">
-        <div className="nav-brand" onClick={() => setSection("home")}>
-          <span className="nav-logo">⚡</span>
-          <span className="nav-name">BALBOA ALERTA</span>
-        </div>
-        <div className="nav-links">
-          <button className={`nav-btn ${section === "home" ? "active" : ""}`} onClick={() => setSection("home")}>
-            Reportes
-          </button>
-          <button className={`nav-btn ${section === "mapa" ? "active" : ""}`} onClick={() => setSection("mapa")}>
-            Mapa
-          </button>
-          <button className={`nav-btn nav-admin ${section === "admin" ? "active" : ""}`} onClick={() => setSection("admin")}>
-            Admin
-          </button>
-        </div>
-      </nav>
+      {toast && <div className={"toast toast-" + toast.type}>{toast.msg}</div>}
 
-      {/* CONTENIDO */}
-      <main className="main-content">
-        {section === "home"  && renderHome()}
-        {section === "form"  && renderForm()}
-        {section === "mapa"  && renderMapa()}
-        {section === "admin" && (!adminAuth ? renderAdminLogin() : renderAdmin())}
-      </main>
+      <header className="header">
+        <div className="header-top">
+          <span className="header-icon">⚡</span>
+          <span className="header-brand">BALBOA ALERTA</span>
+        </div>
+        <nav className="nav">
+          <button className={"nav-btn" + (section === "home" ? " active" : "")} onClick={function() { setSection("home"); loadReports(); }}>Reportes</button>
+          <button className={"nav-btn" + (section === "mapa" ? " active" : "")} onClick={function() { setSection("mapa"); }}>Mapa</button>
+          <button className={"nav-btn" + (section === "admin" ? " active" : "")} onClick={function() { setSection("admin"); }}>Admin</button>
+        </nav>
+        <p className="header-sub">Barrio Balboa · La Chorrera</p>
+      </header>
 
-      {/* FOOTER */}
+      {section === "home" && (
+        <main className="main">
+          <div className="hero">
+            <h1 className="hero-title">BALBOA<br />ALERTA</h1>
+            <p className="hero-sub">Vecinos organizados. Comunidad activa.</p>
+            <p className="hero-sub">Un barrio más limpio, más seguro, más nuestro.</p>
+            <button className="btn-primary" onClick={function() { setSection("form"); }}>Reportar incidencia</button>
+          </div>
+
+          <div className="stats-grid">
+            <div className="stat-card"><span className="stat-num">{stats.total}</span><span className="stat-label">Total reportes</span></div>
+            <div className="stat-card stat-red"><span className="stat-num">{stats.nuevo}</span><span className="stat-label">Sin atender</span></div>
+            <div className="stat-card stat-blue"><span className="stat-num">{stats.proceso}</span><span className="stat-label">En proceso</span></div>
+            <div className="stat-card stat-green"><span className="stat-num">{stats.resuelto}</span><span className="stat-label">Resueltos</span></div>
+          </div>
+
+          <div className="filters">
+            <select value={filterZona} onChange={function(e) { setFilterZona(e.target.value); }}>
+              <option value="todas">Todas las zonas</option>
+              {ZONAS.map(function(z) { return <option key={z} value={z}>{z}</option>; })}
+            </select>
+            <select value={filterTipo} onChange={function(e) { setFilterTipo(e.target.value); }}>
+              <option value="todos">Todos los tipos</option>
+              {TIPOS.map(function(t) { return <option key={t.value} value={t.value}>{t.icon} {t.value}</option>; })}
+            </select>
+            <select value={filterEstado} onChange={function(e) { setFilterEstado(e.target.value); }}>
+              <option value="todos">Todos los estados</option>
+              {Object.keys(ESTADOS).map(function(k) { return <option key={k} value={k}>{ESTADOS[k].label}</option>; })}
+            </select>
+          </div>
+
+          <section className="reports-section">
+            <h2 className="section-title">Reportes recientes</h2>
+            <p>{filtered.length} reporte(s)</p>
+            {loading ? (
+              <p className="loading-text">Cargando reportes...</p>
+            ) : filtered.length === 0 ? (
+              <p className="empty-text">No hay reportes con estos filtros.</p>
+            ) : (
+              <div className="reports-list">
+                {filtered.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }).map(function(r) {
+                  var tipo = getTipoData(r.type);
+                  var estado = ESTADOS[r.status] || ESTADOS.nuevo;
+                  var prior = PRIORIDADES[r.priority] || PRIORIDADES.media;
+                  return (
+                    <div key={r.id} className="report-card" style={{ borderLeftColor: tipo.color }}>
+                      <div className="report-header">
+                        <span className="report-tipo">{tipo.icon} {r.type}</span>
+                        <span className="report-date">{formatDate(r.createdAt)}</span>
+                      </div>
+                      <div className="report-badges">
+                        <span className="badge" style={{ background: prior.bg, color: prior.color }}>{prior.label}</span>
+                        <span className="badge" style={{ background: "#f0f0f0", color: estado.color }}>
+                          <span className="badge-dot" style={{ background: estado.color }}></span>
+                          {estado.label}
+                        </span>
+                        {r.zone && <span className="badge badge-zone">{r.zone}</span>}
+                      </div>
+                      {r.description && <p className="report-desc">{r.description}</p>}
+                      <div className="report-footer">
+                        {r.lat && r.lng && <span className="report-gps">GPS: {Number(r.lat).toFixed(5)}, {Number(r.lng).toFixed(5)}</span>}
+                        {r.contact && <span className="report-contact">{r.contact}</span>}
+                        {r.lat && r.lng && <a className="report-map-link" href={"https://www.google.com/maps?q=" + r.lat + "," + r.lng} target="_blank" rel="noreferrer">Ver en mapa</a>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </main>
+      )}
+
+      {section === "form" && (
+        <main className="main">
+          <div className="form-container">
+            <h2 className="form-title">Reportar incidencia</h2>
+            <form onSubmit={submitReport} className="report-form">
+              <label>Tipo de incidencia</label>
+              <select value={form.type} onChange={function(e) { setForm(Object.assign({}, form, { type: e.target.value })); }}>
+                {TIPOS.map(function(t) { return <option key={t.value} value={t.value}>{t.icon} {t.value}</option>; })}
+              </select>
+
+              <label>Zona</label>
+              <select value={form.zone} onChange={function(e) { setForm(Object.assign({}, form, { zone: e.target.value })); }}>
+                <option value="">Selecciona una zona...</option>
+                {ZONAS.map(function(z) { return <option key={z} value={z}>{z}</option>; })}
+              </select>
+
+              <label>Descripcion</label>
+              <textarea
+                value={form.description}
+                onChange={function(e) { setForm(Object.assign({}, form, { description: e.target.value })); }}
+                placeholder="Describe el problema con detalle..."
+                rows={4}
+                required
+              />
+
+              <label>Ubicacion exacta</label>
+              <input
+                type="text"
+                value={form.location}
+                onChange={function(e) { setForm(Object.assign({}, form, { location: e.target.value })); }}
+                placeholder="Calle, referencia, numero..."
+              />
+
+              <label>Prioridad</label>
+              <select value={form.priority} onChange={function(e) { setForm(Object.assign({}, form, { priority: e.target.value })); }}>
+                {Object.keys(PRIORIDADES).map(function(k) { return <option key={k} value={k}>{PRIORIDADES[k].label}</option>; })}
+              </select>
+
+              <label>Contacto (opcional)</label>
+              <input
+                type="text"
+                value={form.contact}
+                onChange={function(e) { setForm(Object.assign({}, form, { contact: e.target.value })); }}
+                placeholder="Nombre o telefono..."
+              />
+
+              <button type="button" className={"btn-gps" + (form.lat ? " btn-gps-ok" : "")} onClick={usarUbicacion} disabled={gpsLoading}>
+                {gpsLoading ? "Obteniendo ubicacion..." : form.lat ? ("GPS: " + Number(form.lat).toFixed(4) + ", " + Number(form.lng).toFixed(4)) : "Usar mi ubicacion GPS"}
+              </button>
+
+              <div className="form-actions">
+                <button type="button" className="btn-secondary" onClick={function() { setSection("home"); }}>Cancelar</button>
+                <button type="submit" className="btn-primary">Enviar reporte</button>
+              </div>
+            </form>
+          </div>
+        </main>
+      )}
+
+      {section === "mapa" && (
+        <main className="main">
+          <h2 className="section-title">Mapa de incidencias</h2>
+          <p className="map-sub">{mapReports.length} reporte(s) con ubicacion GPS</p>
+          <div className="map-wrapper">
+            <MapContainer center={[8.8694, -79.7831]} zoom={14} style={{ height: "420px", width: "100%" }}>
+              <TileLayer
+                attribution="OpenStreetMap"
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {mapReports.map(function(r) {
+                var tipo = getTipoData(r.type);
+                return (
+                  <Marker key={r.id} position={[r.lat, r.lng]} icon={createColorIcon(tipo.color)}>
+                    <Popup>
+                      <strong>{tipo.icon} {r.type}</strong><br />
+                      {r.zone && <span>{r.zone}<br /></span>}
+                      {r.description && <span>{r.description}<br /></span>}
+                      <span style={{ color: (ESTADOS[r.status] || ESTADOS.nuevo).color }}>
+                        {(ESTADOS[r.status] || ESTADOS.nuevo).label}
+                      </span>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+              <Circle center={[8.8694, -79.7831]} radius={800} pathOptions={{ color: "#BF0A30", fillColor: "#BF0A30", fillOpacity: 0.05 }} />
+            </MapContainer>
+          </div>
+        </main>
+      )}
+
+      {section === "admin" && (
+        <main className="main">
+          {!adminAuth ? (
+            <div className="admin-login">
+              <h2>Panel de administracion</h2>
+              <input
+                type="password"
+                placeholder="Contrasena..."
+                value={adminInput}
+                onChange={function(e) { setAdminInput(e.target.value); }}
+              />
+              <button className="btn-primary" onClick={function() {
+                if (adminInput === "balboa2029") {
+                  setAdminAuth(true);
+                  setAdminError("");
+                } else {
+                  setAdminError("Contrasena incorrecta");
+                }
+              }}>
+                Ingresar
+              </button>
+              {adminError && <p className="error-text">{adminError}</p>}
+            </div>
+          ) : (
+            <div className="admin-panel">
+              <div className="admin-header">
+                <h2>Panel de administracion</h2>
+                <button className="btn-secondary btn-sm" onClick={function() { setAdminAuth(false); }}>Cerrar sesion</button>
+              </div>
+              <p className="admin-sub">{reports.length} reporte(s) totales</p>
+              {reports.length === 0 ? (
+                <p className="empty-text">No hay reportes aun.</p>
+              ) : (
+                <div className="admin-list">
+                  {reports.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }).map(function(r) {
+                    var tipo = getTipoData(r.type);
+                    return (
+                      <div key={r.id} className="admin-card" style={{ borderLeftColor: tipo.color }}>
+                        <div className="admin-card-top">
+                          <span>{tipo.icon} <strong>{r.type}</strong></span>
+                          <span className="report-date">{formatDate(r.createdAt)}</span>
+                        </div>
+                        {r.zone && <p className="admin-zone">{r.zone}</p>}
+                        {r.description && <p className="admin-desc">{r.description}</p>}
+                        {r.lat && r.lng && <p className="report-gps">GPS: {Number(r.lat).toFixed(5)}, {Number(r.lng).toFixed(5)}</p>}
+                        <div className="admin-actions">
+                          <select value={r.status} onChange={function(e) { updateStatus(r.id, e.target.value); }} className="status-select">
+                            {Object.keys(ESTADOS).map(function(k) { return <option key={k} value={k}>{ESTADOS[k].label}</option>; })}
+                          </select>
+                          <button className="btn-delete" onClick={function() { deleteReport(r.id); }}>Eliminar</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      )}
+
       <footer className="footer">
-        <p>Balboa Alerta · Barrio Balboa, La Chorrera, Panamá · <em>Pequeñas acciones. Grandes cambios.</em></p>
+        <p>Balboa Alerta · Barrio Balboa, La Chorrera, Panama</p>
       </footer>
-
-      {/* TOAST */}
-      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
     </div>
   );
 }
