@@ -1,30 +1,21 @@
-// backend/index.js
+// backend/index.js — Balboa Alerta 2.0
 const express = require("express");
-const cors = require("cors");
-const fs = require("fs");
-const path = require("path");
+const cors    = require("cors");
+const fs      = require("fs");
+const path    = require("path");
 
-const app = express();
-const PORT = 5000;
+const app       = express();
+const PORT      = 5000;
 const DATA_FILE = path.join(__dirname, "reports.json");
 
-// Middlewares básicos
 app.use(cors());
 app.use(express.json());
 
-// Función para leer los reportes del archivo
 function loadReports() {
   try {
-    if (!fs.existsSync(DATA_FILE)) {
-      fs.writeFileSync(DATA_FILE, "[]", "utf8");
-      return [];
-    }
-
+    if (!fs.existsSync(DATA_FILE)) { fs.writeFileSync(DATA_FILE, "[]", "utf8"); return []; }
     const raw = fs.readFileSync(DATA_FILE, "utf8");
-    if (!raw.trim()) {
-      return [];
-    }
-
+    if (!raw.trim()) return [];
     const data = JSON.parse(raw);
     return Array.isArray(data) ? data : [];
   } catch (err) {
@@ -33,57 +24,78 @@ function loadReports() {
   }
 }
 
-// Función para guardar los reportes en el archivo
 function saveReports(reports) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(reports, null, 2), "utf8");
-    console.log(`reports.json actualizado. Total reportes: ${reports.length}`);
+    console.log(`reports.json actualizado. Total: ${reports.length}`);
   } catch (err) {
     console.error("Error escribiendo reports.json:", err);
   }
 }
 
-// GET /reports → devuelve todos los reportes
+// GET /reports — todos los reportes
 app.get("/reports", (req, res) => {
-  const reports = loadReports();
-  res.json(reports);
+  res.json(loadReports());
 });
 
-// POST /reports → crea un nuevo reporte
+// POST /reports — nuevo reporte
 app.post("/reports", (req, res) => {
   try {
     const reports = loadReports();
-
-    // Tomamos lo que viene del frontend y nos aseguramos de tener un id y fecha
-    const body = req.body || {};
-    const nuevoReporte = {
-      id: body.id || Date.now().toString(),
-      tipo: body.tipo || "",
-      descripcion: body.descripcion || "",
-      ubicacion: body.ubicacion || "",
-      zona: body.zona || "",
-      prioridad: body.prioridad || "",
-      contacto: body.contacto || "",
-      fecha: body.fecha || new Date().toISOString(),
+    const body    = req.body || {};
+    const nuevo   = {
+      id:          Date.now().toString(),
+      type:        body.type        || body.tipo        || "",
+      description: body.description || body.descripcion || "",
+      location:    body.location    || body.ubicacion   || "",
+      zone:        body.zone        || body.zona        || "Barrio Balboa Centro",
+      priority:    body.priority    || body.prioridad   || "media",
+      contact:     body.contact     || body.contacto    || "",
+      status:      "nuevo",
+      createdAt:   new Date().toISOString(),
     };
-
-    reports.unshift(nuevoReporte);
+    reports.unshift(nuevo);
     saveReports(reports);
-
-    console.log("[POST] Nuevo reporte recibido. Total ahora:", reports.length);
-
-    // Devolvemos todos los reportes para que el frontend refresque la lista
+    console.log("[POST] Nuevo reporte. Total:", reports.length);
     res.json({ success: true, reports });
   } catch (err) {
     console.error("Error en POST /reports:", err);
-    res.status(500).json({ success: false, message: "Error interno del servidor" });
+    res.status(500).json({ success: false, message: "Error interno" });
   }
 });
 
-// Arrancamos el servidor
+// PATCH /reports/:id — actualizar estado (para panel admin)
+app.patch("/reports/:id", (req, res) => {
+  try {
+    const reports = loadReports();
+    const idx     = reports.findIndex(r => String(r.id) === String(req.params.id));
+    if (idx === -1) return res.status(404).json({ success: false, message: "Reporte no encontrado" });
+    reports[idx] = { ...reports[idx], ...req.body };
+    saveReports(reports);
+    res.json({ success: true, report: reports[idx] });
+  } catch (err) {
+    console.error("Error en PATCH /reports/:id:", err);
+    res.status(500).json({ success: false, message: "Error interno" });
+  }
+});
+
+// DELETE /reports/:id
+app.delete("/reports/:id", (req, res) => {
+  try {
+    const reports = loadReports();
+    const filtered = reports.filter(r => String(r.id) !== String(req.params.id));
+    saveReports(filtered);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
 app.listen(PORT, () => {
   const reports = loadReports();
-  console.log("Usando archivo de datos:", DATA_FILE);
-  console.log("Reportes cargados desde archivo:", reports.length);
-  console.log(`Backend Balboa Alerta escuchando en http://localhost:${PORT}`);
+  console.log("─────────────────────────────────────");
+  console.log("  BALBOA ALERTA 2.0 — Backend activo");
+  console.log(`  http://localhost:${PORT}`);
+  console.log(`  Reportes en archivo: ${reports.length}`);
+  console.log("─────────────────────────────────────");
 });
