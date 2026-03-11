@@ -12,35 +12,42 @@ L.Icon.Default.mergeOptions({
 });
 
 const TIPOS = [
-  { value: "Basura acumulada",      icon: "🗑️", color: "#e67e22" },
-  { value: "Alumbrado defectuoso",  icon: "💡", color: "#f1c40f" },
-  { value: "Daño en vía pública",   icon: "🚧", color: "#e74c3c" },
-  { value: "Riesgo para peatones",  icon: "⚠️", color: "#c0392b" },
-  { value: "Problema de agua",      icon: "💧", color: "#2980b9" },
-  { value: "Alcantarillado",        icon: "🔧", color: "#7f8c8d" },
-  { value: "Seguridad ciudadana",   icon: "🔵", color: "#8e44ad" },
-  { value: "Áreas verdes",          icon: "🌿", color: "#27ae60" },
-  { value: "Otro",                  icon: "📋", color: "#95a5a6" },
+  { value: "Basura acumulada", icon: "🗑️", color: "#e67e22" },
+  { value: "Alumbrado defectuoso", icon: "💡", color: "#f1c40f" },
+  { value: "Daño en vía pública", icon: "🚧", color: "#e74c3c" },
+  { value: "Riesgo para peatones", icon: "⚠️", color: "#c0392b" },
+  { value: "Problema de agua", icon: "💧", color: "#2980b9" },
+  { value: "Alcantarillado", icon: "🔧", color: "#7f8c8d" },
+  { value: "Seguridad ciudadana", icon: "🔵", color: "#8e44ad" },
+  { value: "Áreas verdes", icon: "🌿", color: "#27ae60" },
+  { value: "Otro", icon: "📋", color: "#95a5a6" },
 ];
 
 const ZONAS = [
-  "La Tuliheuca", "Naos", "Santa Elena", "San Nicolás",
-  "Marañonal", "Barrio Balboa Centro", "Av. Las Américas",
-  "Calle P. P. Sánchez", "El Hatillo", "Otra zona"
+  "La Tuliheuca",
+  "Naos",
+  "Santa Elena",
+  "San Nicolás",
+  "Marañonal",
+  "Barrio Balboa Centro",
+  "Av. Las Américas",
+  "Calle P. P. Sánchez",
+  "El Hatillo",
+  "Otra zona",
 ];
 
 const PRIORIDADES = {
   critica: { label: "Crítica", color: "#c0392b", bg: "#fdf0f0" },
-  alta:    { label: "Alta",    color: "#e67e22", bg: "#fef9f0" },
-  media:   { label: "Media",   color: "#f39c12", bg: "#fffbf0" },
-  baja:    { label: "Baja",    color: "#27ae60", bg: "#f0fdf4" },
+  alta: { label: "Alta", color: "#e67e22", bg: "#fef6ec" },
+  media: { label: "Media", color: "#f39c12", bg: "#fff8e8" },
+  baja: { label: "Baja", color: "#27ae60", bg: "#eefbf3" },
 };
 
 const ESTADOS = {
-  nuevo:         { label: "Nuevo",       color: "#e74c3c" },
+  nuevo: { label: "Nuevo", color: "#e74c3c" },
   "en revision": { label: "En revisión", color: "#f39c12" },
-  "en proceso":  { label: "En proceso",  color: "#3498db" },
-  resuelto:      { label: "Resuelto",    color: "#27ae60" },
+  "en proceso": { label: "En proceso", color: "#3498db" },
+  resuelto: { label: "Resuelto", color: "#27ae60" },
 };
 
 const API = "https://balboa-alerta-production.up.railway.app";
@@ -48,9 +55,9 @@ const API = "https://balboa-alerta-production.up.railway.app";
 function createColorIcon(color) {
   return L.divIcon({
     className: "",
-    html: `<div style="width:14px;height:14px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
+    html: `<div style="width:16px;height:16px;background:${color};border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.35)"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
   });
 }
 
@@ -81,22 +88,24 @@ export default function App() {
     try {
       setLoading(true);
       const res = await fetch(`${API}/reports`);
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Error al cargar reportes");
       const data = await res.json();
-      const normalized = data.map((r) => ({
-        id:          r.id || Date.now(),
-        type:        r.type || r.tipo || "Otro",
+
+      const normalized = data.map((r, index) => ({
+        id: r.id || index + 1,
+        type: r.type || r.tipo || "Otro",
         description: r.description || r.descripcion || "",
-        location:    r.location || r.ubicacion || "",
-        zone:        r.zone || r.zona || "",
-        contact:     r.contact || r.contacto || "",
-        priority:    r.priority || r.prioridad || "media",
-        status:      r.status || "nuevo",
-        source:      r.source || "vecino",
-        createdAt:   r.createdAt || new Date().toISOString(),
-        lat:         r.lat || null,
-        lng:         r.lng || null,
+        location: r.location || r.ubicacion || "",
+        zone: r.zone || r.zona || "",
+        contact: r.contact || r.contacto || "",
+        priority: r.priority || r.prioridad || "media",
+        status: r.status || "nuevo",
+        source: r.source || "vecino",
+        createdAt: r.createdAt || new Date().toISOString(),
+        lat: r.lat || null,
+        lng: r.lng || null,
       }));
+
       setReports(normalized);
     } catch (err) {
       showToast("No se pudo conectar al servidor", "error");
@@ -105,40 +114,79 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => { loadReports(); }, [loadReports]);
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
 
-  function showToast(msg, type) {
-    if (type === undefined) { type = "success"; }
+  function showToast(msg, type = "success") {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 3200);
   }
 
   function usarUbicacion() {
-    if (!navigator.geolocation) { showToast("GPS no disponible", "error"); return; }
+    if (!navigator.geolocation) {
+      showToast("GPS no disponible en este dispositivo", "error");
+      return;
+    }
+
     setGpsLoading(true);
+
     navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        setForm(function(f) { return Object.assign({}, f, { lat: pos.coords.latitude, lng: pos.coords.longitude }); });
+      function (pos) {
+        setForm(function (prev) {
+          return {
+            ...prev,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          };
+        });
         setGpsLoading(false);
-        showToast("Ubicación capturada");
+        showToast("Ubicación GPS capturada");
       },
-      function() { setGpsLoading(false); showToast("No se pudo obtener ubicación", "error"); }
+      function () {
+        setGpsLoading(false);
+        showToast("No se pudo obtener la ubicación", "error");
+      }
     );
   }
 
   async function submitReport(e) {
     e.preventDefault();
-    if (!form.description.trim()) { showToast("Describe la incidencia", "error"); return; }
-    if (!form.zone) { showToast("Selecciona una zona", "error"); return; }
+
+    if (!form.description.trim()) {
+      showToast("Describe la incidencia", "error");
+      return;
+    }
+
+    if (!form.zone) {
+      showToast("Selecciona una zona", "error");
+      return;
+    }
+
     try {
-      var res = await fetch(API + "/reports", {
+      const res = await fetch(`${API}/reports`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(Object.assign({}, form, { status: "nuevo", createdAt: new Date().toISOString() })),
+        body: JSON.stringify({
+          ...form,
+          status: "nuevo",
+          createdAt: new Date().toISOString(),
+        }),
       });
-      if (!res.ok) throw new Error();
+
+      if (!res.ok) throw new Error("Error al enviar");
+
       await loadReports();
-      setForm({ type: "Basura acumulada", description: "", location: "", zone: "", contact: "", priority: "media", lat: null, lng: null });
+      setForm({
+        type: "Basura acumulada",
+        description: "",
+        location: "",
+        zone: "",
+        contact: "",
+        priority: "media",
+        lat: null,
+        lng: null,
+      });
       setSection("home");
       showToast("Reporte enviado exitosamente");
     } catch (err) {
@@ -148,11 +196,14 @@ export default function App() {
 
   async function updateStatus(id, newStatus) {
     try {
-      await fetch(API + "/reports/" + id, {
+      const res = await fetch(`${API}/reports/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
+
+      if (!res.ok) throw new Error("Error al actualizar");
+
       await loadReports();
       showToast("Estado actualizado");
     } catch (err) {
@@ -161,9 +212,12 @@ export default function App() {
   }
 
   async function deleteReport(id) {
-    if (!window.confirm("Eliminar este reporte?")) { return; }
+    if (!window.confirm("¿Eliminar este reporte?")) return;
+
     try {
-      await fetch(API + "/reports/" + id, { method: "DELETE" });
+      const res = await fetch(`${API}/reports/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error al eliminar");
+
       await loadReports();
       showToast("Reporte eliminado");
     } catch (err) {
@@ -171,112 +225,219 @@ export default function App() {
     }
   }
 
-  var filtered = reports.filter(function(r) {
-    if (filterZona !== "todas" && r.zone !== filterZona) { return false; }
-    if (filterTipo !== "todos" && r.type !== filterTipo) { return false; }
-    if (filterEstado !== "todos" && r.status !== filterEstado) { return false; }
-    return true;
-  });
-
-  var stats = {
-    total:    reports.length,
-    nuevo:    reports.filter(function(r) { return r.status === "nuevo"; }).length,
-    proceso:  reports.filter(function(r) { return r.status === "en proceso"; }).length,
-    resuelto: reports.filter(function(r) { return r.status === "resuelto"; }).length,
-  };
-
   function getTipoData(type) {
-    return TIPOS.find(function(t) { return t.value === type; }) || TIPOS[TIPOS.length - 1];
+    return TIPOS.find((t) => t.value === type) || TIPOS[TIPOS.length - 1];
   }
 
   function formatDate(iso) {
-    return new Date(iso).toLocaleString("es-PA", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleString("es-PA", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
-  var mapReports = filtered.filter(function(r) { return r.lat && r.lng; });
+  const filtered = reports.filter((r) => {
+    if (filterZona !== "todas" && r.zone !== filterZona) return false;
+    if (filterTipo !== "todos" && r.type !== filterTipo) return false;
+    if (filterEstado !== "todos" && r.status !== filterEstado) return false;
+    return true;
+  });
+
+  const stats = {
+    total: reports.length,
+    nuevo: reports.filter((r) => r.status === "nuevo").length,
+    proceso: reports.filter((r) => r.status === "en proceso").length,
+    resuelto: reports.filter((r) => r.status === "resuelto").length,
+  };
+
+  const sortedFiltered = [...filtered].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
+  const mapReports = filtered.filter((r) => r.lat && r.lng);
 
   return (
     <div className="app">
-      {toast && <div className={"toast toast-" + toast.type}>{toast.msg}</div>}
+      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
 
       <header className="header">
         <div className="header-top">
           <span className="header-icon">⚡</span>
           <span className="header-brand">BALBOA ALERTA</span>
         </div>
+
         <nav className="nav">
-          <button className={"nav-btn" + (section === "home" ? " active" : "")} onClick={function() { setSection("home"); loadReports(); }}>Reportes</button>
-          <button className={"nav-btn" + (section === "mapa" ? " active" : "")} onClick={function() { setSection("mapa"); }}>Mapa</button>
-          <button className={"nav-btn" + (section === "admin" ? " active" : "")} onClick={function() { setSection("admin"); }}>Admin</button>
+          <button
+            className={`nav-btn ${section === "home" ? "active" : ""}`}
+            onClick={() => {
+              setSection("home");
+              loadReports();
+            }}
+          >
+            Reportes
+          </button>
+
+          <button
+            className={`nav-btn ${section === "mapa" ? "active" : ""}`}
+            onClick={() => setSection("mapa")}
+          >
+            Mapa
+          </button>
+
+          <button
+            className={`nav-btn ${section === "admin" ? "active" : ""}`}
+            onClick={() => setSection("admin")}
+          >
+            Admin
+          </button>
         </nav>
+
         <p className="header-sub">Barrio Balboa · La Chorrera</p>
       </header>
 
       {section === "home" && (
         <main className="main">
-          <div className="hero">
-            <h1 className="hero-title">BALBOA<br />ALERTA</h1>
+          <section className="hero">
+            <h1 className="hero-title">
+              BALBOA
+              <br />
+              ALERTA
+            </h1>
             <p className="hero-sub">Vecinos organizados. Comunidad activa.</p>
-            <p className="hero-sub">Un barrio más limpio, más seguro, más nuestro.</p>
-            <button className="btn-primary" onClick={function() { setSection("form"); }}>Reportar incidencia</button>
-          </div>
+            <p className="hero-sub">
+              Un barrio más limpio, más seguro, más nuestro.
+            </p>
+            <button className="btn-primary" onClick={() => setSection("form")}>
+              Reportar incidencia
+            </button>
+          </section>
 
-          <div className="stats-grid">
-            <div className="stat-card"><span className="stat-num">{stats.total}</span><span className="stat-label">Total reportes</span></div>
-            <div className="stat-card stat-red"><span className="stat-num">{stats.nuevo}</span><span className="stat-label">Sin atender</span></div>
-            <div className="stat-card stat-blue"><span className="stat-num">{stats.proceso}</span><span className="stat-label">En proceso</span></div>
-            <div className="stat-card stat-green"><span className="stat-num">{stats.resuelto}</span><span className="stat-label">Resueltos</span></div>
-          </div>
+          <section className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-num">{stats.total}</span>
+              <span className="stat-label">Total reportes</span>
+            </div>
+            <div className="stat-card stat-red">
+              <span className="stat-num">{stats.nuevo}</span>
+              <span className="stat-label">Sin atender</span>
+            </div>
+            <div className="stat-card stat-blue">
+              <span className="stat-num">{stats.proceso}</span>
+              <span className="stat-label">En proceso</span>
+            </div>
+            <div className="stat-card stat-green">
+              <span className="stat-num">{stats.resuelto}</span>
+              <span className="stat-label">Resueltos</span>
+            </div>
+          </section>
 
-          <div className="filters">
-            <select value={filterZona} onChange={function(e) { setFilterZona(e.target.value); }}>
+          <section className="filters">
+            <select value={filterZona} onChange={(e) => setFilterZona(e.target.value)}>
               <option value="todas">Todas las zonas</option>
-              {ZONAS.map(function(z) { return <option key={z} value={z}>{z}</option>; })}
+              {ZONAS.map((z) => (
+                <option key={z} value={z}>
+                  {z}
+                </option>
+              ))}
             </select>
-            <select value={filterTipo} onChange={function(e) { setFilterTipo(e.target.value); }}>
+
+            <select value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)}>
               <option value="todos">Todos los tipos</option>
-              {TIPOS.map(function(t) { return <option key={t.value} value={t.value}>{t.icon} {t.value}</option>; })}
+              {TIPOS.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.icon} {t.value}
+                </option>
+              ))}
             </select>
-            <select value={filterEstado} onChange={function(e) { setFilterEstado(e.target.value); }}>
+
+            <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)}>
               <option value="todos">Todos los estados</option>
-              {Object.keys(ESTADOS).map(function(k) { return <option key={k} value={k}>{ESTADOS[k].label}</option>; })}
+              {Object.keys(ESTADOS).map((k) => (
+                <option key={k} value={k}>
+                  {ESTADOS[k].label}
+                </option>
+              ))}
             </select>
-          </div>
+          </section>
 
           <section className="reports-section">
             <h2 className="section-title">Reportes recientes</h2>
-            <p>{filtered.length} reporte(s)</p>
+            <p className="loading-text">{filtered.length} reporte(s)</p>
+
             {loading ? (
               <p className="loading-text">Cargando reportes...</p>
             ) : filtered.length === 0 ? (
               <p className="empty-text">No hay reportes con estos filtros.</p>
             ) : (
               <div className="reports-list">
-                {filtered.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }).map(function(r) {
-                  var tipo = getTipoData(r.type);
-                  var estado = ESTADOS[r.status] || ESTADOS.nuevo;
-                  var prior = PRIORIDADES[r.priority] || PRIORIDADES.media;
+                {sortedFiltered.map((r) => {
+                  const tipo = getTipoData(r.type);
+                  const estado = ESTADOS[r.status] || ESTADOS.nuevo;
+                  const prior = PRIORIDADES[r.priority] || PRIORIDADES.media;
+
                   return (
-                    <div key={r.id} className="report-card" style={{ borderLeftColor: tipo.color }}>
+                    <article
+                      key={r.id}
+                      className="report-card"
+                      style={{ borderLeftColor: tipo.color }}
+                    >
                       <div className="report-header">
-                        <span className="report-tipo">{tipo.icon} {r.type}</span>
+                        <span className="report-tipo">
+                          {tipo.icon} {r.type}
+                        </span>
                         <span className="report-date">{formatDate(r.createdAt)}</span>
                       </div>
+
                       <div className="report-badges">
-                        <span className="badge" style={{ background: prior.bg, color: prior.color }}>{prior.label}</span>
-                        <span className="badge" style={{ background: "#f0f0f0", color: estado.color }}>
-                          <span className="badge-dot" style={{ background: estado.color }}></span>
+                        <span
+                          className="badge"
+                          style={{ background: prior.bg, color: prior.color }}
+                        >
+                          {prior.label}
+                        </span>
+
+                        <span
+                          className="badge"
+                          style={{ background: "#f8fafc", color: estado.color }}
+                        >
+                          <span
+                            className="badge-dot"
+                            style={{ background: estado.color }}
+                          ></span>
                           {estado.label}
                         </span>
+
                         {r.zone && <span className="badge badge-zone">{r.zone}</span>}
                       </div>
+
                       {r.description && <p className="report-desc">{r.description}</p>}
+
                       <div className="report-footer">
-                        {r.lat && r.lng && <span className="report-gps">GPS: {Number(r.lat).toFixed(5)}, {Number(r.lng).toFixed(5)}</span>}
-                        {r.contact && <span className="report-contact">{r.contact}</span>}
-                        {r.lat && r.lng && <a className="report-map-link" href={"https://www.google.com/maps?q=" + r.lat + "," + r.lng} target="_blank" rel="noreferrer">Ver en mapa</a>}
+                        {r.location && (
+                          <span className="report-contact">📍 {r.location}</span>
+                        )}
+                        {r.contact && (
+                          <span className="report-contact">👤 {r.contact}</span>
+                        )}
+                        {r.lat && r.lng && (
+                          <span className="report-gps">
+                            GPS: {Number(r.lat).toFixed(5)}, {Number(r.lng).toFixed(5)}
+                          </span>
+                        )}
+                        {r.lat && r.lng && (
+                          <a
+                            className="report-map-link"
+                            href={`https://www.google.com/maps?q=${r.lat},${r.lng}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Ver en mapa
+                          </a>
+                        )}
                       </div>
-                    </div>
+                    </article>
                   );
                 })}
               </div>
@@ -289,55 +450,106 @@ export default function App() {
         <main className="main">
           <div className="form-container">
             <h2 className="form-title">Reportar incidencia</h2>
+
             <form onSubmit={submitReport} className="report-form">
-              <label>Tipo de incidencia</label>
-              <select value={form.type} onChange={function(e) { setForm(Object.assign({}, form, { type: e.target.value })); }}>
-                {TIPOS.map(function(t) { return <option key={t.value} value={t.value}>{t.icon} {t.value}</option>; })}
-              </select>
+              <div>
+                <label>Tipo de incidencia</label>
+                <select
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                >
+                  {TIPOS.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.icon} {t.value}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <label>Zona</label>
-              <select value={form.zone} onChange={function(e) { setForm(Object.assign({}, form, { zone: e.target.value })); }}>
-                <option value="">Selecciona una zona...</option>
-                {ZONAS.map(function(z) { return <option key={z} value={z}>{z}</option>; })}
-              </select>
+              <div>
+                <label>Zona</label>
+                <select
+                  value={form.zone}
+                  onChange={(e) => setForm({ ...form, zone: e.target.value })}
+                >
+                  <option value="">Selecciona una zona...</option>
+                  {ZONAS.map((z) => (
+                    <option key={z} value={z}>
+                      {z}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <label>Descripcion</label>
-              <textarea
-                value={form.description}
-                onChange={function(e) { setForm(Object.assign({}, form, { description: e.target.value })); }}
-                placeholder="Describe el problema con detalle..."
-                rows={4}
-                required
-              />
+              <div>
+                <label>Descripción</label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Describe el problema con detalle..."
+                  rows={4}
+                  required
+                />
+              </div>
 
-              <label>Ubicacion exacta</label>
-              <input
-                type="text"
-                value={form.location}
-                onChange={function(e) { setForm(Object.assign({}, form, { location: e.target.value })); }}
-                placeholder="Calle, referencia, numero..."
-              />
+              <div>
+                <label>Ubicación exacta</label>
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  placeholder="Calle, referencia, número..."
+                />
+              </div>
 
-              <label>Prioridad</label>
-              <select value={form.priority} onChange={function(e) { setForm(Object.assign({}, form, { priority: e.target.value })); }}>
-                {Object.keys(PRIORIDADES).map(function(k) { return <option key={k} value={k}>{PRIORIDADES[k].label}</option>; })}
-              </select>
+              <div>
+                <label>Prioridad</label>
+                <select
+                  value={form.priority}
+                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                >
+                  {Object.keys(PRIORIDADES).map((k) => (
+                    <option key={k} value={k}>
+                      {PRIORIDADES[k].label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <label>Contacto (opcional)</label>
-              <input
-                type="text"
-                value={form.contact}
-                onChange={function(e) { setForm(Object.assign({}, form, { contact: e.target.value })); }}
-                placeholder="Nombre o telefono..."
-              />
+              <div>
+                <label>Contacto (opcional)</label>
+                <input
+                  type="text"
+                  value={form.contact}
+                  onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                  placeholder="Nombre o teléfono..."
+                />
+              </div>
 
-              <button type="button" className={"btn-gps" + (form.lat ? " btn-gps-ok" : "")} onClick={usarUbicacion} disabled={gpsLoading}>
-                {gpsLoading ? "Obteniendo ubicacion..." : form.lat ? ("GPS: " + Number(form.lat).toFixed(4) + ", " + Number(form.lng).toFixed(4)) : "Usar mi ubicacion GPS"}
+              <button
+                type="button"
+                className={`btn-gps ${form.lat ? "btn-gps-ok" : ""}`}
+                onClick={usarUbicacion}
+                disabled={gpsLoading}
+              >
+                {gpsLoading
+                  ? "Obteniendo ubicación..."
+                  : form.lat
+                  ? `GPS: ${Number(form.lat).toFixed(4)}, ${Number(form.lng).toFixed(4)}`
+                  : "Usar mi ubicación GPS"}
               </button>
 
               <div className="form-actions">
-                <button type="button" className="btn-secondary" onClick={function() { setSection("home"); }}>Cancelar</button>
-                <button type="submit" className="btn-primary">Enviar reporte</button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setSection("home")}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary">
+                  Enviar reporte
+                </button>
               </div>
             </form>
           </div>
@@ -347,21 +559,43 @@ export default function App() {
       {section === "mapa" && (
         <main className="main">
           <h2 className="section-title">Mapa de incidencias</h2>
-          <p className="map-sub">{mapReports.length} reporte(s) con ubicacion GPS</p>
+          <p className="map-sub">{mapReports.length} reporte(s) con ubicación GPS</p>
+
           <div className="map-wrapper">
-            <MapContainer center={[8.8694, -79.7831]} zoom={14} style={{ height: "420px", width: "100%" }}>
+            <MapContainer
+              center={[8.8694, -79.7831]}
+              zoom={14}
+              style={{ height: "460px", width: "100%" }}
+            >
               <TileLayer
                 attribution="OpenStreetMap"
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              {mapReports.map(function(r) {
-                var tipo = getTipoData(r.type);
+              {mapReports.map((r) => {
+                const tipo = getTipoData(r.type);
                 return (
-                  <Marker key={r.id} position={[r.lat, r.lng]} icon={createColorIcon(tipo.color)}>
+                  <Marker
+                    key={r.id}
+                    position={[r.lat, r.lng]}
+                    icon={createColorIcon(tipo.color)}
+                  >
                     <Popup>
-                      <strong>{tipo.icon} {r.type}</strong><br />
-                      {r.zone && <span>{r.zone}<br /></span>}
-                      {r.description && <span>{r.description}<br /></span>}
+                      <strong>
+                        {tipo.icon} {r.type}
+                      </strong>
+                      <br />
+                      {r.zone && (
+                        <>
+                          {r.zone}
+                          <br />
+                        </>
+                      )}
+                      {r.description && (
+                        <>
+                          {r.description}
+                          <br />
+                        </>
+                      )}
                       <span style={{ color: (ESTADOS[r.status] || ESTADOS.nuevo).color }}>
                         {(ESTADOS[r.status] || ESTADOS.nuevo).label}
                       </span>
@@ -369,7 +603,15 @@ export default function App() {
                   </Marker>
                 );
               })}
-              <Circle center={[8.8694, -79.7831]} radius={800} pathOptions={{ color: "#BF0A30", fillColor: "#BF0A30", fillOpacity: 0.05 }} />
+              <Circle
+                center={[8.8694, -79.7831]}
+                radius={800}
+                pathOptions={{
+                  color: "#BF0A30",
+                  fillColor: "#BF0A30",
+                  fillOpacity: 0.05,
+                }}
+              />
             </MapContainer>
           </div>
         </main>
@@ -379,21 +621,24 @@ export default function App() {
         <main className="main">
           {!adminAuth ? (
             <div className="admin-login">
-              <h2>Panel de administracion</h2>
+              <h2>Panel de administración</h2>
               <input
                 type="password"
-                placeholder="Contrasena..."
+                placeholder="Contraseña..."
                 value={adminInput}
-                onChange={function(e) { setAdminInput(e.target.value); }}
+                onChange={(e) => setAdminInput(e.target.value)}
               />
-              <button className="btn-primary" onClick={function() {
-                if (adminInput === "balboa2029") {
-                  setAdminAuth(true);
-                  setAdminError("");
-                } else {
-                  setAdminError("Contrasena incorrecta");
-                }
-              }}>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  if (adminInput === "balboa2029") {
+                    setAdminAuth(true);
+                    setAdminError("");
+                  } else {
+                    setAdminError("Contraseña incorrecta");
+                  }
+                }}
+              >
                 Ingresar
               </button>
               {adminError && <p className="error-text">{adminError}</p>}
@@ -401,34 +646,72 @@ export default function App() {
           ) : (
             <div className="admin-panel">
               <div className="admin-header">
-                <h2>Panel de administracion</h2>
-                <button className="btn-secondary btn-sm" onClick={function() { setAdminAuth(false); }}>Cerrar sesion</button>
+                <h2>Panel de administración</h2>
+                <button
+                  className="btn-secondary btn-sm"
+                  onClick={() => setAdminAuth(false)}
+                >
+                  Cerrar sesión
+                </button>
               </div>
+
               <p className="admin-sub">{reports.length} reporte(s) totales</p>
+
               {reports.length === 0 ? (
-                <p className="empty-text">No hay reportes aun.</p>
+                <p className="empty-text">No hay reportes aún.</p>
               ) : (
                 <div className="admin-list">
-                  {reports.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); }).map(function(r) {
-                    var tipo = getTipoData(r.type);
-                    return (
-                      <div key={r.id} className="admin-card" style={{ borderLeftColor: tipo.color }}>
-                        <div className="admin-card-top">
-                          <span>{tipo.icon} <strong>{r.type}</strong></span>
-                          <span className="report-date">{formatDate(r.createdAt)}</span>
+                  {[...reports]
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .map((r) => {
+                      const tipo = getTipoData(r.type);
+
+                      return (
+                        <div
+                          key={r.id}
+                          className="admin-card"
+                          style={{ borderLeftColor: tipo.color }}
+                        >
+                          <div className="admin-card-top">
+                            <span>
+                              {tipo.icon} <strong>{r.type}</strong>
+                            </span>
+                            <span className="report-date">{formatDate(r.createdAt)}</span>
+                          </div>
+
+                          {r.zone && <p className="admin-zone">{r.zone}</p>}
+                          {r.description && <p className="admin-desc">{r.description}</p>}
+                          {r.location && <p className="admin-zone">📍 {r.location}</p>}
+                          {r.contact && <p className="admin-zone">👤 {r.contact}</p>}
+                          {r.lat && r.lng && (
+                            <p className="report-gps">
+                              GPS: {Number(r.lat).toFixed(5)}, {Number(r.lng).toFixed(5)}
+                            </p>
+                          )}
+
+                          <div className="admin-actions">
+                            <select
+                              value={r.status}
+                              onChange={(e) => updateStatus(r.id, e.target.value)}
+                              className="status-select"
+                            >
+                              {Object.keys(ESTADOS).map((k) => (
+                                <option key={k} value={k}>
+                                  {ESTADOS[k].label}
+                                </option>
+                              ))}
+                            </select>
+
+                            <button
+                              className="btn-delete"
+                              onClick={() => deleteReport(r.id)}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </div>
-                        {r.zone && <p className="admin-zone">{r.zone}</p>}
-                        {r.description && <p className="admin-desc">{r.description}</p>}
-                        {r.lat && r.lng && <p className="report-gps">GPS: {Number(r.lat).toFixed(5)}, {Number(r.lng).toFixed(5)}</p>}
-                        <div className="admin-actions">
-                          <select value={r.status} onChange={function(e) { updateStatus(r.id, e.target.value); }} className="status-select">
-                            {Object.keys(ESTADOS).map(function(k) { return <option key={k} value={k}>{ESTADOS[k].label}</option>; })}
-                          </select>
-                          <button className="btn-delete" onClick={function() { deleteReport(r.id); }}>Eliminar</button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -437,7 +720,7 @@ export default function App() {
       )}
 
       <footer className="footer">
-        <p>Balboa Alerta · Barrio Balboa, La Chorrera, Panama</p>
+        <p>Balboa Alerta · Barrio Balboa, La Chorrera, Panamá</p>
       </footer>
     </div>
   );
