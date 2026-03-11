@@ -8,7 +8,12 @@ const app       = express();
 const PORT      = process.env.PORT || 5000;
 const DATA_FILE = path.join(__dirname, "reports.json");
 
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.options("*", cors());
 app.use(express.json());
 
 function loadReports() {
