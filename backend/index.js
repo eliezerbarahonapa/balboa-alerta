@@ -5,7 +5,7 @@ const fs      = require("fs");
 const path    = require("path");
 
 const app       = express();
-const PORT      = 5000;
+const PORT      = process.env.PORT || 5000;
 const DATA_FILE = path.join(__dirname, "reports.json");
 
 app.use(cors());
@@ -51,6 +51,8 @@ app.post("/reports", (req, res) => {
       zone:        body.zone        || body.zona        || "Barrio Balboa Centro",
       priority:    body.priority    || body.prioridad   || "media",
       contact:     body.contact     || body.contacto    || "",
+      lat:         body.lat         || null,
+      lng:         body.lng         || null,
       status:      "nuevo",
       createdAt:   new Date().toISOString(),
     };
@@ -95,7 +97,7 @@ app.listen(PORT, () => {
   const reports = loadReports();
   console.log("─────────────────────────────────────");
   console.log("  BALBOA ALERTA 2.0 — Backend activo");
-  console.log(`  http://localhost:${PORT}`);
+  console.log(`  Puerto: ${PORT}`);
   console.log(`  Reportes en archivo: ${reports.length}`);
   console.log("─────────────────────────────────────");
 });
