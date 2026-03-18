@@ -20,7 +20,7 @@ async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS reports (
       id          SERIAL PRIMARY KEY,
-      code        TEXT UNIQUE,
+      code        TEXT,
       type        TEXT,
       description TEXT,
       location    TEXT,
@@ -34,6 +34,14 @@ async function initDB() {
       created_at  TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS code TEXT`);
+  await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS photo_url TEXT`);
+  await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'media'`);
+  await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS contact TEXT`);
+  await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS lat NUMERIC`);
+  await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS lng NUMERIC`);
+  await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'nuevo'`);
+  await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
   console.log("Tabla reports lista");
 }
 
