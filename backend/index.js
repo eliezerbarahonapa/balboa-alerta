@@ -42,6 +42,9 @@ async function initDB() {
   await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS lng NUMERIC`);
   await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'nuevo'`);
   await pool.query(`ALTER TABLE reports ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`);
+  await pool.query(`CREATE SEQUENCE IF NOT EXISTS reports_id_seq`);
+await pool.query(`ALTER TABLE reports ALTER COLUMN id SET DEFAULT nextval('reports_id_seq')`);
+await pool.query(`SELECT setval('reports_id_seq', COALESCE((SELECT MAX(id) FROM reports), 0) + 1, false)`);
   console.log("Tabla reports lista");
 }
 
