@@ -43,7 +43,7 @@ const ESTADOS = {
   resuelto:      { label: "Resuelto",    color: "#27ae60" },
 };
 
-const API = "https://balboa-alerta.onrender.com";
+const API = "https://balboa-alerta-1.onrender.com";
 
 function createColorIcon(color) {
   return L.divIcon({
