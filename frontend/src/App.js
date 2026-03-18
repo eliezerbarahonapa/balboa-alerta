@@ -66,15 +66,16 @@ export default function App() {
   const [filterEstado, setFilterEstado] = useState("todos");
   const [toast, setToast] = useState(null);
   const [form, setForm] = useState({
-    type: "Basura acumulada",
-    description: "",
-    location: "",
-    zone: "",
-    contact: "",
-    priority: "media",
-    lat: null,
-    lng: null,
-  });
+  type: "Basura acumulada",
+  description: "",
+  location: "",
+  zone: "",
+  contact: "",
+  priority: "media",
+  lat: null,
+  lng: null,
+  photo: null,
+});
   const [gpsLoading, setGpsLoading] = useState(false);
 
   const loadReports = useCallback(async () => {
@@ -127,24 +128,40 @@ export default function App() {
   }
 
   async function submitReport(e) {
-    e.preventDefault();
-    if (!form.description.trim()) { showToast("Describe la incidencia", "error"); return; }
-    if (!form.zone) { showToast("Selecciona una zona", "error"); return; }
-    try {
-      var res = await fetch(API + "/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(Object.assign({}, form, { status: "nuevo", createdAt: new Date().toISOString() })),
-      });
-      if (!res.ok) throw new Error();
-      await loadReports();
-      setForm({ type: "Basura acumulada", description: "", location: "", zone: "", contact: "", priority: "media", lat: null, lng: null });
-      setSection("home");
-      showToast("Reporte enviado exitosamente");
-    } catch (err) {
-      showToast("Error al enviar el reporte", "error");
+  e.preventDefault();
+  if (!form.description.trim()) { showToast("Describe la incidencia", "error"); return; }
+  if (!form.zone) { showToast("Selecciona una zona", "error"); return; }
+  try {
+    var formData = new FormData();
+    formData.append("type",        form.type);
+    formData.append("description", form.description);
+    formData.append("location",    form.location || "");
+    formData.append("zone",        form.zone);
+    formData.append("priority",    form.priority);
+    formData.append("contact",     form.contact || "");
+    if (form.lat)   formData.append("lat", form.lat);
+    if (form.lng)   formData.append("lng", form.lng);
+    if (form.photo) formData.append("photo", form.photo);
+
+    var res = await fetch(API + "/reports", { method: "POST", body: formData });
+    if (!res.ok) throw new Error();
+    var data = await res.json();
+    await loadReports();
+
+    var code  = data.report ? data.report.code : "";
+    var waUrl = data.report ? data.report.whatsapp_url : null;
+
+    setForm({ type: "Basura acumulada", description: "", location: "", zone: "", contact: "", priority: "media", lat: null, lng: null, photo: null });
+    setSection("home");
+    showToast("Reporte " + code + " registrado exitosamente");
+
+    if (waUrl) {
+      setTimeout(function() { window.open(waUrl, "_blank"); }, 1500);
     }
+  } catch (err) {
+    showToast("Error al enviar el reporte", "error");
   }
+}
 
   async function updateStatus(id, newStatus) {
     try {
