@@ -1,165 +1,176 @@
-// backend/index.js — Balboa Alerta 2.0
-require("dotenv").config();
-const express  = require("express");
-const cors     = require("cors");
+// backend/index.js — Balboa Alerta 3.0
+const express = require("express");
+const cors    = require("cors");
+const multer  = require("multer");
+const path    = require("path");
+const fs      = require("fs");
 const { Pool } = require("pg");
 
 const app  = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 
-// ── PostgreSQL ────────────────────────────────────────────────────────────────
+// ── Base de datos ──────────────────────────────────────────
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false }
 });
 
+// Crear tabla si no existe
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS reports (
-      id          TEXT PRIMARY KEY,
+      id          SERIAL PRIMARY KEY,
+      code        TEXT UNIQUE,
       type        TEXT,
       description TEXT,
       location    TEXT,
       zone        TEXT,
-      priority    TEXT,
+      priority    TEXT DEFAULT 'media',
       contact     TEXT,
-      lat         DOUBLE PRECISION,
-      lng         DOUBLE PRECISION,
+      lat         NUMERIC,
+      lng         NUMERIC,
+      photo_url   TEXT,
       status      TEXT DEFAULT 'nuevo',
       created_at  TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  console.log("  Tabla reports lista.");
+  console.log("Tabla reports lista");
 }
 
-// ── Express ───────────────────────────────────────────────────────────────────
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+// ── Multer — fotos en /uploads ──────────────────────────────
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename:    (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|webp/;
+    cb(null, allowed.test(file.mimetype));
+  }
+});
+
+// ── Middleware ──────────────────────────────────────────────
+app.use(cors({ origin: "*", methods: ["GET","POST","PATCH","DELETE","OPTIONS"] }));
 app.options("*", cors());
 app.use(express.json());
+app.use("/uploads", express.static(uploadDir));
 
-// GET /reports — todos los reportes (más recientes primero)
+// ── Generar código de seguimiento ──────────────────────────
+function generarCodigo() {
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `BA-${num}`;
+}
+
+// ── Generar link de WhatsApp ────────────────────────────────
+function linkWhatsApp(code, type, zone) {
+  const numero = process.env.WHATSAPP_NUMBER || "50700000000";
+  const msg = encodeURIComponent(
+    `Hola, acabo de registrar un reporte en Balboa Alerta.\n\n` +
+    `Código: ${code}\nTipo: ${type}\nZona: ${zone}\n\n` +
+    `Por favor confirmar recibo.`
+  );
+  return `https://wa.me/${numero}?text=${msg}`;
+}
+
+// ── RUTAS ───────────────────────────────────────────────────
+
+// GET /reports
 app.get("/reports", async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM reports ORDER BY created_at DESC");
-    // Mapear columnas snake_case → camelCase para el frontend
-    res.json(rows.map(dbToReport));
+    const { rows } = await pool.query(
+      "SELECT * FROM reports ORDER BY created_at DESC"
+    );
+    res.json(rows);
   } catch (err) {
-    console.error("Error en GET /reports:", err);
+    console.error("GET /reports error:", err);
     res.status(500).json({ success: false, message: "Error interno" });
   }
 });
 
-// POST /reports — nuevo reporte
-app.post("/reports", async (req, res) => {
+// POST /reports — con foto opcional
+app.post("/reports", upload.single("photo"), async (req, res) => {
   try {
-    const body = req.body || {};
-    const nuevo = {
-      id:          Date.now().toString(),
-      type:        body.type        || body.tipo        || "",
-      description: body.description || body.descripcion || "",
-      location:    body.location    || body.ubicacion   || "",
-      zone:        body.zone        || body.zona        || "Barrio Balboa Centro",
-      priority:    body.priority    || body.prioridad   || "media",
-      contact:     body.contact     || body.contacto    || "",
-      lat:         body.lat         || null,
-      lng:         body.lng         || null,
-      status:      "nuevo",
-    };
+    const body     = req.body || {};
+    const code     = generarCodigo();
+    const photoUrl = req.file
+      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+      : null;
 
-    await pool.query(
-      `INSERT INTO reports (id, type, description, location, zone, priority, contact, lat, lng, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [nuevo.id, nuevo.type, nuevo.description, nuevo.location,
-       nuevo.zone, nuevo.priority, nuevo.contact, nuevo.lat, nuevo.lng, nuevo.status]
+    const type  = body.type  || body.tipo  || "";
+    const zone  = body.zone  || body.zona  || "Barrio Balboa Centro";
+
+    const { rows } = await pool.query(
+      `INSERT INTO reports
+        (code, type, description, location, zone, priority, contact, lat, lng, photo_url, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'nuevo')
+       RETURNING *`,
+      [
+        code,
+        type,
+        body.description || body.descripcion || "",
+        body.location    || body.ubicacion   || "",
+        zone,
+        body.priority    || body.prioridad   || "media",
+        body.contact     || body.contacto    || "",
+        body.lat  || null,
+        body.lng  || null,
+        photoUrl
+      ]
     );
 
-    const { rows } = await pool.query("SELECT * FROM reports ORDER BY created_at DESC");
-    console.log("[POST] Nuevo reporte. Total:", rows.length);
-    res.json({ success: true, reports: rows.map(dbToReport) });
+    const reporte = rows[0];
+    reporte.whatsapp_url = linkWhatsApp(code, type, zone);
+
+    res.json({ success: true, report: reporte });
   } catch (err) {
-    console.error("Error en POST /reports:", err);
+    console.error("POST /reports error:", err);
     res.status(500).json({ success: false, message: "Error interno" });
   }
 });
 
-// PATCH /reports/:id — actualizar campos (para panel admin)
+// PATCH /reports/:id — actualizar estado
 app.patch("/reports/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const campos = req.body || {};
-
-    // Construir SET dinámico solo con los campos enviados
-    const permitidos = ["type","description","location","zone","priority","contact","lat","lng","status"];
-    const sets = [];
-    const vals = [];
-    let i = 1;
-    for (const key of permitidos) {
-      if (key in campos) {
-        sets.push(`${key} = $${i}`);
-        vals.push(campos[key]);
-        i++;
-      }
-    }
-    if (sets.length === 0) return res.status(400).json({ success: false, message: "Sin campos para actualizar" });
-
-    vals.push(id);
     const { rows } = await pool.query(
-      `UPDATE reports SET ${sets.join(", ")} WHERE id = $${i} RETURNING *`,
-      vals
+      "UPDATE reports SET status=$1 WHERE id=$2 RETURNING *",
+      [req.body.status, req.params.id]
     );
-    if (rows.length === 0) return res.status(404).json({ success: false, message: "Reporte no encontrado" });
-    res.json({ success: true, report: dbToReport(rows[0]) });
+    if (!rows.length) return res.status(404).json({ success: false });
+    res.json({ success: true, report: rows[0] });
   } catch (err) {
-    console.error("Error en PATCH /reports/:id:", err);
-    res.status(500).json({ success: false, message: "Error interno" });
+    res.status(500).json({ success: false });
   }
 });
 
 // DELETE /reports/:id
 app.delete("/reports/:id", async (req, res) => {
   try {
-    await pool.query("DELETE FROM reports WHERE id = $1", [req.params.id]);
+    await pool.query("DELETE FROM reports WHERE id=$1", [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    console.error("Error en DELETE /reports/:id:", err);
     res.status(500).json({ success: false });
   }
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function dbToReport(row) {
-  return {
-    id:          row.id,
-    type:        row.type,
-    description: row.description,
-    location:    row.location,
-    zone:        row.zone,
-    priority:    row.priority,
-    contact:     row.contact,
-    lat:         row.lat,
-    lng:         row.lng,
-    status:      row.status,
-    createdAt:   row.created_at,
-  };
-}
+// GET / — health check
+app.get("/", (req, res) => {
+  res.send("<h1 style='color:#dc2626;text-align:center;margin-top:100px'>BALBOA ALERTA 3.0 — VIVO</h1>");
+});
 
-// ── Arranque ──────────────────────────────────────────────────────────────────
-initDB()
-  .then(() => {
-    app.listen(PORT, async () => {
-      const { rows } = await pool.query("SELECT COUNT(*) FROM reports");
-      console.log("─────────────────────────────────────");
-      console.log("  BALBOA ALERTA 2.0 — Backend activo");
-      console.log(`  Puerto: ${PORT}`);
-      console.log(`  Reportes en DB: ${rows[0].count}`);
-      console.log("─────────────────────────────────────");
-    });
-  })
-  .catch(err => {
-    console.error("Error conectando a PostgreSQL:", err);
-    process.exit(1);
+// ── Arranque ────────────────────────────────────────────────
+initDB().then(() => {
+  app.listen(PORT, () => {
+    console.log("─────────────────────────────────────");
+    console.log("  BALBOA ALERTA 3.0 — Backend activo");
+    console.log(`  Puerto: ${PORT}`);
+    console.log("─────────────────────────────────────");
   });
+}).catch(err => {
+  console.error("Error iniciando DB:", err);
+  process.exit(1);
+});
