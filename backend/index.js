@@ -17,7 +17,6 @@ const pool = new Pool({
 
 // Crear tabla si no existe
 async function initDB() {
-  await pool.query(`DROP TABLE IF EXISTS reports`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS reports (
       id          SERIAL PRIMARY KEY,
