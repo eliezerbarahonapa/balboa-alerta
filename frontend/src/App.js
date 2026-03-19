@@ -94,7 +94,7 @@ export default function App() {
         priority:    r.priority || r.prioridad || "media",
         status:      r.status || "nuevo",
         source:      r.source || "vecino",
-        createdAt:   r.createdAt || new Date().toISOString(),
+        createdAt:    r.created_at || r.createdAt || new Date().toISOString(),
         lat:         r.lat || null,
         lng:         r.lng || null,
       }));
