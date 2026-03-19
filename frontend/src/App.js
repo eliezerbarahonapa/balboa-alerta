@@ -207,7 +207,7 @@ export default function App() {
   }
 
   function formatDate(iso) {
-    return new Date(iso).toLocaleString("es-PA", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleString("es-PA", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Panama" });
   }
 
   var mapReports = filtered.filter(function(r) { return r.lat && r.lng; });
@@ -352,6 +352,16 @@ export default function App() {
                 {gpsLoading ? "Obteniendo ubicacion..." : form.lat ? ("GPS: " + Number(form.lat).toFixed(4) + ", " + Number(form.lng).toFixed(4)) : "Usar mi ubicacion GPS"}
               </button>
 
+<div className="form-group">
+  <label>Foto del problema (opcional)</label>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={function(e) {
+      setForm(function(f) { return Object.assign({}, f, { photo: e.target.files[0] || null }); });
+    }}
+  />
+</div>
               <div className="form-actions">
                 <button type="button" className="btn-secondary" onClick={function() { setSection("home"); }}>Cancelar</button>
                 <button type="submit" className="btn-primary">Enviar reporte</button>
